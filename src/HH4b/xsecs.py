@@ -4,6 +4,8 @@ Cross Sections for 13.6 TeV,
 
 from __future__ import annotations
 
+import json
+
 BR_WQQ = 0.676
 BR_WLNU = 0.324
 BR_ZQQ = 0.69911
@@ -57,19 +59,6 @@ xsecs["QCD_HT-1000to1200"] = 879.1
 xsecs["QCD_HT-1200to1500"] = 384.5
 xsecs["QCD_HT-1500to2000"] = 125.5
 xsecs["QCD_HT-2000"] = 25.78
-
-xsecs["QCD-4Jets_HT-40to70"] = xsecs["QCD_HT-40to70"]
-xsecs["QCD-4Jets_HT-70to100"] = xsecs["QCD_HT-70to100"]
-xsecs["QCD-4Jets_HT-100to200"] = xsecs["QCD_HT-100to200"]
-xsecs["QCD-4Jets_HT-200to400"] = xsecs["QCD_HT-200to400"]
-xsecs["QCD-4Jets_HT-400to600"] = xsecs["QCD_HT-400to600"]
-xsecs["QCD-4Jets_HT-600to800"] = xsecs["QCD_HT-600to800"]
-xsecs["QCD-4Jets_HT-800to1000"] = xsecs["QCD_HT-800to1000"]
-xsecs["QCD-4Jets_HT-1000to1200"] = xsecs["QCD_HT-1000to1200"]
-xsecs["QCD-4Jets_HT-1200to1500"] = xsecs["QCD_HT-1200to1500"]
-xsecs["QCD-4Jets_HT-1500to2000"] = xsecs["QCD_HT-1500to2000"]
-xsecs["QCD-4Jets_HT-2000"] = xsecs["QCD_HT-2000"]
-
 
 # xsdb
 xsecs["QCD_PT-120to170_MuEnrichedPt5"] = 22980.0
@@ -216,6 +205,19 @@ xsecs["Zto2Q-4Jets_HT-400to600"] = 124.1
 xsecs["Zto2Q-4Jets_HT-600to800"] = 27.28
 xsecs["Zto2Q-4Jets_HT-800"] = 14.57
 
+# LO samples in 2024
+# from xsec analyzer: https://cms-generators.docs.cern.ch/useful-tools-and-links/HowToGenXSecAnalyzer
+xsecs["Wto2Q-3Jets_Bin-HT-100to400"] = 16120
+xsecs["Wto2Q-3Jets_Bin-HT-400to800"] = 354.2
+xsecs["Wto2Q-3Jets_Bin-HT-800to1500"] = 29.6
+xsecs["Wto2Q-3Jets_Bin-HT-1500to2500"] = 1.852
+xsecs["Wto2Q-3Jets_Bin-HT-2500"] = 0.1177
+xsecs["Zto2Q-4Jets_Bin-HT-100to400"] = 6328
+xsecs["Zto2Q-4Jets_Bin-HT-400to800"] = 145.1
+xsecs["Zto2Q-4Jets_Bin-HT-800to1500"] = 12.93
+xsecs["Zto2Q-4Jets_Bin-HT-1500to2500"] = 0.8496
+xsecs["Zto2Q-4Jets_Bin-HT-2500"] = 0.05672
+
 xsecs["Wto2Q-2Jets_PTQQ-100to200_1J"] = 1517.0
 xsecs["Wto2Q-2Jets_PTQQ-100to200_2J"] = 1757.0
 xsecs["Wto2Q-2Jets_PTQQ-200to400_1J"] = 103.6
@@ -224,7 +226,6 @@ xsecs["Wto2Q-2Jets_PTQQ-400to600_1J"] = 3.496
 xsecs["Wto2Q-2Jets_PTQQ-400to600_2J"] = 12.75
 xsecs["Wto2Q-2Jets_PTQQ-600_1J"] = 0.4221
 xsecs["Wto2Q-2Jets_PTQQ-600_2J"] = 2.128
-
 xsecs["Zto2Q-2Jets_PTQQ-100to200_1J"] = 302.0
 xsecs["Zto2Q-2Jets_PTQQ-100to200_2J"] = 343.9
 xsecs["Zto2Q-2Jets_PTQQ-200to400_1J"] = 21.64
@@ -234,15 +235,16 @@ xsecs["Zto2Q-2Jets_PTQQ-400to600_2J"] = 2.683
 xsecs["Zto2Q-2Jets_PTQQ-600_1J"] = 0.08717
 xsecs["Zto2Q-2Jets_PTQQ-600_2J"] = 0.4459
 
-# Same samples as above but just with the full name
-xsecs["Zto2Q-2Jets_PTQQ-100to200_1J_TuneCP5_13p6TeV_amcatnloFXFX-pythia8"] = 302.0
-xsecs["Zto2Q-2Jets_PTQQ-100to200_2J_TuneCP5_13p6TeV_amcatnloFXFX-pythia8"] = 343.9
-xsecs["Zto2Q-2Jets_PTQQ-200to400_1J_TuneCP5_13p6TeV_amcatnloFXFX-pythia8"] = 21.64
-xsecs["Zto2Q-2Jets_PTQQ-200to400_2J_TuneCP5_13p6TeV_amcatnloFXFX-pythia8"] = 48.36
-xsecs["Zto2Q-2Jets_PTQQ-400to600_1J_TuneCP5_13p6TeV_amcatnloFXFX-pythia8"] = 0.7376
-xsecs["Zto2Q-2Jets_PTQQ-400to600_2J_TuneCP5_13p6TeV_amcatnloFXFX-pythia8"] = 2.683
-xsecs["Zto2Q-2Jets_PTQQ-600_1J_TuneCP5_13p6TeV_amcatnloFXFX-pythia8"] = 0.08717
-xsecs["Zto2Q-2Jets_PTQQ-600_2J_TuneCP5_13p6TeV_amcatnloFXFX-pythia8"] = 0.4459
+# LO samples in 2024
+# from xsec analyzer: https://cms-generators.docs.cern.ch/useful-tools-and-links/HowToGenXSecAnalyzer
+xsecs["Wto2Q-2Jets_Bin-PTQQ-100"] = 1751.0
+xsecs["Wto2Q-2Jets_Bin-PTQQ-200"] = 164.3
+xsecs["Wto2Q-2Jets_Bin-PTQQ-400"] = 9.205
+xsecs["Wto2Q-2Jets_Bin-PTQQ-600"] = 2.23
+xsecs["Zto2Q-2Jets_Bin-PTQQ-100"] = 695.0
+xsecs["Zto2Q-2Jets_Bin-PTQQ-200"] = 71.56
+xsecs["Zto2Q-2Jets_Bin-PTQQ-400"] = 3.811
+xsecs["Zto2Q-2Jets_Bin-PTQQ-600"] = 0.5086
 
 xsecs["WtoLNu-4Jets"] = 55390.0
 xsecs["WtoLNu-2Jets"] = 64481.58
@@ -253,19 +255,43 @@ xsecs["WtoLNu-4Jets_1J"] = 9625.0
 xsecs["WtoLNu-4Jets_2J"] = 3161.0
 xsecs["WtoLNu-4Jets_3J"] = 1468.0
 
+# WtoLNu-4Jets 2024 samples
+xsecs["WtoLNu-4Jets_Bin-1J"] = 9141
+xsecs["WtoLNu-4Jets_Bin-2J"] = 2931
+xsecs["WtoLNu-4Jets_Bin-3J"] = 864.6
+xsecs["WtoLNu-4Jets_Bin-4J"] = 417.8
+# WtoLNu-2Jets 2024 samples
+xsecs["WtoLNu-2Jets_Bin-1J-PTLNu-40to100"] = 4211
+xsecs["WtoLNu-2Jets_Bin-1J-PTLNu-100to200"] = 342.3
+xsecs["WtoLNu-2Jets_Bin-1J-PTLNu-200to400"] = 21.84
+xsecs["WtoLNu-2Jets_Bin-1J-PTLNu-400to600"] = 0.6845
+xsecs["WtoLNu-2Jets_Bin-1J-PTLNu-600"] = 0.07753
+xsecs["WtoLNu-2Jets_Bin-2J-PTLNu-40to100"] = 1581
+xsecs["WtoLNu-2Jets_Bin-2J-PTLNu-100to200"] = 411.1
+xsecs["WtoLNu-2Jets_Bin-2J-PTLNu-200to400"] = 53.59
+xsecs["WtoLNu-2Jets_Bin-2J-PTLNu-400to600"] = 3.099
+xsecs["WtoLNu-2Jets_Bin-2J-PTLNu-600"] = 0.5259
+
+
 xsecs["DYto2L-4Jets_MLL-50"] = 5467.0
 xsecs["DYto2L-2Jets_MLL-50"] = 6688.0
 xsecs["DYto2L-2Jets_MLL-50_0J"] = 5378.0
 xsecs["DYto2L-2Jets_MLL-50_1J"] = 1017.0
 xsecs["DYto2L-2Jets_MLL-50_2J"] = 385.5
 
-xsecs["DYto2L-4Jets_MLL-50to120_HT-40to70"] = 316.7
-xsecs["DYto2L-4Jets_MLL-50to120_HT-70to100"] = 140.1
-xsecs["DYto2L-4Jets_MLL-50to120_HT-100to400"] = 179.6
-xsecs["DYto2L-4Jets_MLL-50to120_HT-400to800"] = 6.742
-xsecs["DYto2L-4Jets_MLL-50to120_HT-800to1500"] = 0.693
-xsecs["DYto2L-4Jets_MLL-50to120_HT-1500to2500"] = 0.05047
-xsecs["DYto2L-4Jets_MLL-50to120_HT-2500"] = 0.00346
+# LO samples in 2024 (xsdb)
+xsecs["DYto2L-2Jets_Bin-1J-MLL-50-PTLL-40to100"] = 475.3
+xsecs["DYto2L-2Jets_Bin-1J-MLL-50-PTLL-100to200"] = 45.42
+xsecs["DYto2L-2Jets_Bin-1J-MLL-50-PTLL-200to400"] = 3.382
+xsecs["DYto2L-2Jets_Bin-1J-MLL-50-PTLL-400to600"] = 0.1162
+xsecs["DYto2L-2Jets_Bin-1J-MLL-50-PTLL-600"] = 0.01392
+
+xsecs["DYto2L-2Jets_Bin-2J-MLL-50-PTLL-40to100"] = 179.3
+xsecs["DYto2L-2Jets_Bin-2J-MLL-50-PTLL-100to200"] = 51.68
+xsecs["DYto2L-2Jets_Bin-2J-MLL-50-PTLL-200to400"] = 7.159
+xsecs["DYto2L-2Jets_Bin-2J-MLL-50-PTLL-400to600"] = 0.4157
+xsecs["DYto2L-2Jets_Bin-2J-MLL-50-PTLL-600"] = 0.07019
+
 
 ########################################################
 # Cross Sections for 13 TeV.
@@ -325,8 +351,6 @@ xsecs["ZZ_TuneCP5_13TeV-pythia8"] = 16.91
 
 
 def main():
-    import json
-
     with open("xsecs.json", "w") as outfile:  # noqa: PTH123
         json.dump(xsecs, outfile, indent=4)
 
