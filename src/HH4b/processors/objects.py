@@ -133,6 +133,25 @@ def veto_electrons(electrons: ElectronArray):
         & (electrons.cutBased >= electrons.LOOSE)
     )
 
+def veto_scouting_electrons(electrons: ElectronArray):
+    # TODO: This won't work. Need to self define isolation and loose ID.
+    print("electron fields")
+    print(electrons.fields)
+    return (
+        (electrons.pt >= 20)
+        & (abs(electrons.eta) <= 2.5)
+        # & (electrons.miniPFRelIso_all < 0.4)
+        # & (electrons.cutBased >= electrons.LOOSE)
+    )
+
+def veto_scouting_muons(muons: MuonArray):
+    # TODO: This won't work. Need to self define isolation and loose ID.
+    print("Muon fields")
+    print(muons.fields)
+    return (
+        (muons.pt >= 10) & (abs(muons.eta) <= 2.4)# & (muons.looseId) & (muons.pfRelIso04_all < 0.25)
+    )
+
 
 def veto_taus(taus: TauArray):
     # https://github.com/jeffkrupa/zprime-bamboo/blob/main/zprlegacy.py#L371
@@ -554,14 +573,18 @@ def ak4_jets_awayfromak8(
     electron_pt: float,
     muon_pt: float,
     sort_by: str = "btag",
+    year: str = "2023", # Dirty fix to pass in year for scouting (doesn't affect offline)
     use_scouting: bool = False,
 ):
     """AK4 jets nonoverlapping with AK8 fatjets"""
     electrons = events.Electron if not use_scouting else events.ScoutingElectron
     electrons = electrons[electrons.pt > electron_pt]
 
-    muons = events.Muon if not use_scouting else events.ScoutingMuon
+    # In 2024 ScoutingMuon -> ScoutingMuonVtx or ScoutingMuonNoVtx due to tracking upgrade. 
+    # We prefer using ScoutingMuonVtx because this forces the muon to have been vertex fitted (better quality)
+    muons = events.Muon if not use_scouting else (events.ScoutingMuonVtx if year == "2024" else events.ScoutingMuon)
     muons = muons[muons.pt > muon_pt]
+    print(muons.fields)
 
     ak4_sel = (
         (jets.pt >= pt)
@@ -572,7 +595,7 @@ def ak4_jets_awayfromak8(
     )
 
     # return top 2 jets sorted by btagPNetB
-    if sort_by == "btag": # TODO: This probably doesn't work for scouting right now
+    if sort_by == "btag": # TODO: This is not implemented for scouting. Would need to use PNet for B tagging
         jets_pnetb = jets[ak.argsort(jets.btagPNetB, ascending=False)]
         return jets_pnetb[ak4_sel][:, :2]
     # return 2 jets closet to fatjet0 and fatjet1, respectively
