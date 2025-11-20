@@ -50,6 +50,8 @@ from .objects import (
     good_muons,
     veto_electrons,
     veto_muons,
+    veto_scouting_electrons,
+    veto_scouting_muons,
 )
 from .SkimmerABC import SkimmerABC
 from .utils import P4, PAD_VAL, add_selection, get_var_mapping, pad_val
@@ -89,20 +91,6 @@ txbbstr_to_skimmer = {
     "glopart-v3": "ParT3TXbb", 
     "glopart-scouting": "ScoutParTTXbb",
 }
-# TODO: Figure out what is the purpose of these, they are redefined inside the bbbbSkimmer class definition?
-# # map txbb string to branch name
-# txbbstr_to_branch = {
-#     "pnet-legacy": "TXbb_legacy",
-#     "pnet-v12": "Txbb",
-#     "glopart-v2": "ParTTXbb",
-# }
-
-# # map txbb string to skimmer variable name
-# txbbstr_to_skimmer = {
-#     "pnet-legacy": "PNetTXbbLegacy",
-#     "pnet-v12": "PNetTXbb",
-#     "glopart-v2": "ParTTXbb",
-# }
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -128,16 +116,7 @@ class bbbbSkimmer(SkimmerABC):
         },
         "ScoutingPFJetRecluster": { 
             **P4, 
-            # Variables below not needed / also do not exist?
-            # "scoutGlobalParT_prob_QCD": "ScoutParTPQCD",
-            # "scoutGlobalParT_prob_Xbb": "ScoutParTPXbb",
-            # "scoutGlobalParT_prob_Xcc": "ScoutParTPXcc",
-            # "scoutGlobalParT_prob_Xcs": "ScoutParTPXcs",
-            # "scoutGlobalParT_prob_Xgg": "ScoutParTPXgg",
-            # "scoutGlobalParT_prob_Xqq": "ScoutParTPXqq",
-            # "scoutGlobalParT_prob_Xtauhtaue": "ScoutParTPXtauhtaue",
-            # "scoutGlobalParT_prob_Xtauhtauh": "ScoutParTPXtauhtauh",
-            # "scoutGlobalParT_prob_Xtauhtaum": "ScoutParTPXtauhtaum",
+            # TODO: Add pnet ak4 btag variable here
         },
         "Lepton": {
             **P4,
@@ -161,19 +140,6 @@ class bbbbSkimmer(SkimmerABC):
             **P4, 
             "msoftdrop": "Msd",
             "particleNet_mass": "PNetMass",
-            # "ScoutParTTXbb": "ScoutParTTXbb", # These are extra variables so get added in extra_vars
-            # "ScoutParTPQCD": "ScoutParTPQCD",
-            # "ScoutParTPXbb": "ScoutParTPXbb",
-            # "ScoutParTPXcc": "ScoutParTPXcc",
-            # "ScoutParTPXcs": "ScoutParTPXcs",
-            # "ScoutParTPXgg": "ScoutParTPXgg",
-            # "ScoutParTPXqq": "ScoutParTPXqq",
-            # "ScoutParTPXtauhtaue": "ScoutParTPXtauhtaue",
-            # "ScoutParTPXtauhtauh": "ScoutParTPXtauhtauh",
-            # "ScoutParTPXtauhtaum": "ScoutParTPXtauhtaum",
-            # "particleNet_mass": "PNetMass", # TODO: Not sure why this is needed; please help someone
-            # "ScoutParTmassGeneric": "ScoutParTmassGeneric",
-            # "ScoutParTmassCorrX2p": "ScoutParTmassCorrX2p"
         },
         "GenHiggs": P4,
         "Event": {
@@ -294,7 +260,7 @@ class bbbbSkimmer(SkimmerABC):
                     "Run3_JetHT_PFScoutingPixelTracking",
                 ],
                 "2024": [
-                    "DST_PFScouting_JetHT", 
+                    "PFScouting_JetHT",
                 ],
             }
         }
@@ -592,21 +558,13 @@ class bbbbSkimmer(SkimmerABC):
                     "ParT3massCorrectedX2p", 
                 ]
         
-        self.jms_values = dict.fromkeys(["2022", "2022EE", "2023", "2023BPix"]) # TODO: If we are not doing JECs for scouting, does one need to worry about this? A: We can do JECs but not worry about variations
-        self.jmr_values = dict.fromkeys(["2022", "2022EE", "2023", "2023BPix"])
+        self.jms_values = dict.fromkeys(["2022", "2022EE", "2023", "2023BPix", "2024"]) 
+        self.jmr_values = dict.fromkeys(["2022", "2022EE", "2023", "2023BPix", "2024"])
         for jmsr_year in self.jms_values:
-            jmr_val = HH4b.hh_vars.jmsr_values["bbFatJetParTmassVis"]["JMR"][jmsr_year] # TODO: Wtf is this jmsr values dictionary
+            jmr_val = HH4b.hh_vars.jmsr_values["bbFatJetParTmassVis"]["JMR"][jmsr_year] 
             jms_val = HH4b.hh_vars.jmsr_values["bbFatJetParTmassVis"]["JMS"][jmsr_year]
 
             if self.use_scouting and self._nano_version == "v15_scouting":
-                # jmr_val = { # Santeri said do this in "Eetu's summer project" at 2:51PM on 13/08/2025
-                #     "2023": {"nom": 1.0, "down": 0.9, "up": 1.1},
-                #     "2023BPix": {"nom": 1.0, "down": 0.9, "up": 1.1}
-                # }[jmsr_year]
-                # jms_val = {
-                #     "2023": {"nom": 1.0, "down": 0.9, "up": 1.1},
-                #     "2023BPix": {"nom": 1.0, "down": 0.9, "up": 1.1}
-                # }[jmsr_year]
                 jmr_val = {"nom": 1.0, "down": 0.9, "up": 1.1}
                 jms_val = {"nom": 1.0, "down": 0.9, "up": 1.1}
 
@@ -803,7 +761,8 @@ class bbbbSkimmer(SkimmerABC):
         print("# events", len(events))
 
         year = events.metadata["dataset"].split("_")[0]
-        is_run3 = year in ["2022", "2022EE", "2023", "2023BPix", "2024"] # 2024 needs separate handling? TODO: Not implemented yet.
+        print(year)
+        is_run3 = year in ["2022", "2022EE", "2023", "2023BPix", "2024"] 
         dataset = "_".join(events.metadata["dataset"].split("_")[1:])
         isData = not hasattr(events, "genWeight")
 
@@ -840,19 +799,16 @@ class bbbbSkimmer(SkimmerABC):
         #########################
         print("starting object selection", f"{time.time() - start:.2f}")
 
-        # Leptons TODO: These cuts are problematic for scouting since electrons are not reconstructed ~ Worry about this if we do production mode discrimination
-        if not self.use_scouting: # Temporary fix, Patin will have to take this out of the conditional, I tried adding the conditionals below but there are missing fields like looseId etc.
-            veto_muon_sel = veto_muons(events.Muon) if not self.use_scouting else veto_muons(events.ScoutingMuon)
-            veto_electron_sel = veto_electrons(events.Electron)  if not self.use_scouting else veto_muons(events.ScoutingElectron) 
-            if self._region != "signal":
-                good_muon_sel = good_muons(events.Muon) if not self.use_scouting else good_muons(events.ScoutingMuon)
-                muons = events.Muon[good_muon_sel] if not self.use_scouting else events.ScoutingMuon[good_muon_sel]
-                muons["id"] = muons.charge * (13)
+        veto_muon_sel = veto_muons(events.Muon) if not self.use_scouting else veto_scouting_muons(events.ScoutingMuonVtx if year == "2024" else events.ScoutingMuon)
+        veto_electron_sel = veto_electrons(events.Electron)  if not self.use_scouting else veto_scouting_electrons(events.ScoutingElectron) 
+        if self._region in ["semilep-tt", "zbb-DYLL-data"]:
+            good_muon_sel = good_muons(events.Muon) 
+            muons = events.Muon[good_muon_sel] 
+            muons["id"] = muons.charge * (13)
 
-                # Electrons are not reco'd in scouting so nothing passes the good_electrons() filter
-                good_electron_sel = good_electrons(events.Electron) if not self.use_scouting else good_muons(events.ScoutingElectron)
-                electrons = events.Electron[good_electron_sel] if not self.use_scouting else events.ScoutingElectron[good_electron_sel]
-                electrons["id"] = electrons.charge * (11)
+            good_electron_sel = good_electrons(events.Electron) 
+            electrons = events.Electron[good_electron_sel]
+            electrons["id"] = electrons.charge * (11)
 
         # AK4 Jets
         num_jets = 4
@@ -869,7 +825,7 @@ class bbbbSkimmer(SkimmerABC):
             use_scouting=self.use_scouting,
         )  
 
-        if JEC_loader.met_factory is not None: # TODO: This whole MET business is a mess to me. Figure it out?
+        if JEC_loader.met_factory is not None:
             # check if "MET" attribute exists
             if not self.use_scouting:
                 if hasattr(events, "MET"):
@@ -888,25 +844,21 @@ class bbbbSkimmer(SkimmerABC):
             if self.use_scouting:
                 if hasattr(events, "ScoutingMET"):
                     events_met = events.ScoutingMET 
-                elif hasattr(events, "PuppiMET"): # Scouting doesn't have PuppiMET? Discuss this part with Patin
-                    events_met = events.PuppiMET # TODO: What is this and does this work for scouting?
-                    deltaX_up = events_met.ptUnclusteredUp * np.cos(events_met.phiUnclusteredUp)
-                    deltaY_up = events_met.ptUnclusteredUp * np.sin(events_met.phiUnclusteredUp)
-                    deltaX_down = events_met.ptUnclusteredDown * np.cos(events_met.phiUnclusteredDown)
-                    deltaY_down = events_met.ptUnclusteredDown * np.sin(events_met.phiUnclusteredDown)
-                    events_met["MetUnclustEnUpDeltaX"] = np.abs(deltaX_up - deltaX_down) / 2
-                    events_met["MetUnclustEnUpDeltaY"] = np.abs(deltaY_up - deltaY_down) / 2
                 else:
-                    raise AttributeError("Neither 'ScoutingMET' nor 'PuppiMET' attribute found in events.")
+                    raise AttributeError("'ScoutingMET' attribute not found in events.")
 
-            met = JEC_loader.met_factory.build(events_met, jets, {}) if isData and not self.use_scouting else events_met # TODO: Can we abandon JECs for scouting? A: Yes pretty much. A2: Probably not? Currently notice significant mass bias and suspect that this is due to lack of JECs
+            # Currently do not correct MET in scouting. TODO: Can this be done?
+            met = JEC_loader.met_factory.build(events_met, jets, {}) if isData and not self.use_scouting else events_met
         else:
             if hasattr(events, "MET"):
                 met = events.MET if not self.use_scouting else events.ScoutingMET
-            elif hasattr(events, "PuppiMET"):
-                met = events.PuppiMET # TODO: Why don't we calculate deltaX and deltaY if no JEC factory?; what is JEC factory?
+            elif hasattr(events, "PuppiMET") and (not self.use_scouting):
+                met = events.PuppiMET
             else:
-                raise AttributeError(f"Neither {'MET' if not self.use_scouting else 'ScoutingMET'} nor 'PuppiMET' attribute found in events.")
+                if not self.use_scouting:
+                    raise AttributeError("Neither 'MET' nor 'PuppiMET' attribute found in events.")
+                else:
+                    raise AttributeError("'ScoutingMET' attribute not found in events.")
 
         print("ak4 JECs", f"{time.time() - start:.2f}")
 
@@ -1015,6 +967,7 @@ class bbbbSkimmer(SkimmerABC):
                 **self.zbb_top_veto_ak4_selection,
                 **self.zbb_top_veto_lepton_selection,
                 sort_by="none",
+                year = year,
                 use_scouting=self.use_scouting
             )
         else:
@@ -1181,7 +1134,8 @@ class bbbbSkimmer(SkimmerABC):
         pileupVars = {**pileupVars, "nPV": events.PV["npvs"].to_numpy()} if not self.use_scouting else {**pileupVars, "nPV": ak.num(events.ScoutingPrimaryVertex, axis = 1).to_numpy()} # TODO: Check if axis = 1 is the correct one to use
         
         # Trigger variables
-        HLTs = deepcopy(self.HLTs[year])
+        if not self.use_scouting:
+            HLTs = deepcopy(self.HLTs[year])
         # We should not use != "signal" as a condition, it is hard to understand which skimmer needs this. - Raghav
         if (
             is_run3
@@ -1330,9 +1284,8 @@ class bbbbSkimmer(SkimmerABC):
             **ak4JetAwayVars,
             **ak8FatJetVars,
             **bbFatJetVars,
-            # **trigObjFatJetVars, 
-            # Commenting out VBF jets for now, since I do not need them for the scouting analysis- Eetu 11/07/25
-            # **vbfJetVars,
+            # **trigObjFatJetVars, # Not used in scouting
+            # **vbfJetVars, # Not used in scouting
         }
         
         if self._region == "zbb-Zto2Q-DYLL":
@@ -1466,7 +1419,7 @@ class bbbbSkimmer(SkimmerABC):
                     cut_metfilters = cut_metfilters & events.Flag[mf]
             apply_met_filters = True
         else:
-            apply_met_filters = False # Drop MET filters for scouting, can't do them (earlier). - Really, (Now)? - Eetu 13/08
+            apply_met_filters = False # Drop MET filters for scouting, can't do them
 
         if self._region == "zbb-Zto2Q-DYLL":
             # in Zbb-Zto2Q-DYLL region we do not apply any met filters
@@ -1477,7 +1430,7 @@ class bbbbSkimmer(SkimmerABC):
         # jet veto maps
         if is_run3 and (self._region not in ("zbb-Zto2Q-DYLL", "zbb-DYLL-data")):
             cut_jetveto = get_jetveto_event(jets, year)
-            add_selection("ak4_jetveto", cut_jetveto, *selection_args)
+            add_selection("ak4_jetveto_map", cut_jetveto, *selection_args)
 
         if self._region == "pre-sel" or self._region == "signal":
             # >=2 AK8 jets passing selections
@@ -1659,24 +1612,28 @@ class bbbbSkimmer(SkimmerABC):
                 add_selection("top_veto", cut_top_veto, *selection_args)
 
             else: # use scouting variables
+
+                # TODO: Consider a MET cut in scouting.
+
                 # >=2 AK8 jets
                 add_selection("num_ak8jets", eventVars["nFatJets"] >= 2, *selection_args)
-                # FatJet0 with pT>250, mSD>40
+                # FatJet0 with pT>300, mSD>30
                 cut_pt_lead = (
-                    (bbFatJetVars["bbFatJetPt"][:, 0] >= 300)
-                    & (bbFatJetVars["bbFatJetMsd"][:, 0] >= 0) # Trying 20
+                    (bbFatJetVars["bbFatJetPt"][:, 0] >= 300) # Delta R(bb) = 2m_H / p_T, so p_T ~ 312.5 would be boosted regime
+                    & (bbFatJetVars["bbFatJetMsd"][:, 0] >= 30) 
                 )
                 add_selection("ak8_ptmSD_lead", cut_pt_lead, *selection_args) # Includes a cut on leading pt as well
 
                 # FatJet1 with pT>200
                 cut_pt_subl = (
                     np.sum(
-                        bbFatJetVars["bbFatJetPt"][:, :2] >= 200, # 170?
+                        bbFatJetVars["bbFatJetPt"][:, :2] >= 200, 
                         axis=1,
                     )
                 ) >= 2  # >=2 because we already have the lead fatjet
                 add_selection("ak8_pt_subl", cut_pt_subl, *selection_args)
-                # # eta cut already done
+
+                # eta cut already done
 
                 def del_phi(phi1, phi2):
                     return np.abs((phi1 - phi2 + np.pi) % (2 * np.pi) - np.pi)
@@ -1690,13 +1647,12 @@ class bbbbSkimmer(SkimmerABC):
                 # >= 1 AK8 jet with ParT/PNet Xbb >= 0.1
                 cut_txbb = (
                     (np.sum(bbFatJetVars["bbFatJetScoutParTTXbb"][:, :2] >= 0.1, axis=1) >= 1)
-                    # | (np.sum(bbFatJetVars["bbFatJetPNetTXbbLegacy"][:, :2] >= 0.1, axis=1) >= 1) # I don't think this is needed in scouting
                 )
                
                 add_selection("ak8bb_txbb", cut_txbb, *selection_args)
 
-                # HT > 500
-                add_selection("ht500", eventVars["ht"] >= 600, *selection_args)
+                # HT > 600 (Fully efficient region for scouting HT trigger)
+                add_selection("ht500", eventVars["ht"] >= 600, *selection_args) 
 
                 # top veto: no medium b-tagged AK4 jets with pT>30, |eta|<2.4, and dR(ak4, bbFatJet0) > 0.8
                 medium_btag_th_dict = { # Commented out values are for deepFlavB
@@ -1704,8 +1660,9 @@ class bbbbSkimmer(SkimmerABC):
                     # "2022EE": 0.3196,
                     "2023": 0.1918, # Same as below
                     "2023BPix": 0.1923, # PNet medium WP using jetveto map, from https://btv-wiki.docs.cern.ch/PerformanceCalibration/ BTagPerf_240115_Summer23WPs_VetoMap.pdf
-                    "2024": 0.1923, # TODO: Do working points exist? Will continue using 2023BPix one
+                    "2024": 0.1923, # TODO: Update working point for 2024.
                 }
+
                 # no medium b-tagged AK4 jets with pT>30, |eta|<2.4, and dR(ak4, bbFatJet0) > 0.8
                 cut_top_veto = (
                     ak.sum(
@@ -1717,25 +1674,15 @@ class bbbbSkimmer(SkimmerABC):
                 add_selection("top_veto", cut_top_veto, *selection_args)
 
                 # 0 veto leptons
-                # TODO: check if this is correct
+                # TODO: Investigate quality of lepton veto. Concern: poor scouting electron reconstruction.
                 # add_selection(
                 #     "0lep",
                 #     (ak.sum(veto_muon_sel, axis=1) == 0) & (ak.sum(veto_electron_sel, axis=1) == 0),
                 #     *selection_args,
                 # )
-                # Commenting out 0lep because electrons not well defined in scouting, but muons would be so consider changing back at some point - Eetu 11/07/25
 
-                # if apply_trigger and self.use_scouting:
-                #     DST_list  = [events.DST[trigger] for trigger in self.DSTs[year] if trigger in events.DST.fields]
-                #     if DST_list :
-                #         DST_triggered = np.any(
-                #             np.array(DST_list),
-                #             axis=0,
-                #         )
-                #     else:
-                #         DST_triggered = zeros
-
-                #     add_selection("dst", DST_triggered, *selection_args)
+                # TODO: Save this variable and plot it at the end to investigate effect of lepton veto
+                # lepton_veto = (ak.sum(veto_muon_sel, axis=1) == 0) & (ak.sum(veto_electron_sel, axis=1) == 0)
 
         elif self._region == "zbb-Zto2Q-DYLL":
             # dummy selection for Zbb-Zto2Q-DYLL region
