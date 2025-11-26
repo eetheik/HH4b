@@ -68,14 +68,14 @@ def jetid_v14(jets: ak.Array, use_scouting: bool = False) -> tuple[ak.Array, ak.
 
     else: 
         # Mildly modified recommendations for scouting https://indico.cern.ch/event/1487156/contributions/6391070/attachments/3024404/5342673/Scouting_JetID_DQM_06_03_2025.pdf,
-        # largely because electrons are not reconstructed in scouting; but also Neutral EM fraction cuts are changed from 0.99 to 0.9
+        # largely because Neutral EM fraction cuts are changed from 0.99 to 0.9
         print(jets.fields)
         jetidtight = (
             (
                 (np.abs(jets.eta) <= 2.6)
                 & (jets.neHEF < 0.99)
                 & (jets.neEmEF < 0.9)
-                & ((jets.nConstituents) > 1) # chMultiplicity + neMultiplicity = nConstituents in scouting since no Puppi weighting - cite Patin, TODO: What if we use Scouting with Puppi?
+                & ((jets.nConstituents) > 1) # chMultiplicity + neMultiplicity = nConstituents in scouting since no Puppi weighting - cite Patin
                 & (jets.chHEF > 0.01)
                 & (jets.nCh + jets.nMuons + jets.nElectrons > 0) # chMultiplicity not in some of these nano files, so we compute it
             )
@@ -134,22 +134,78 @@ def veto_electrons(electrons: ElectronArray):
     )
 
 def veto_scouting_electrons(electrons: ElectronArray):
-    # TODO: This won't work. Need to self define isolation and loose ID.
-    print("electron fields")
-    print(electrons.fields)
+    # TODO: Need to self define isolation
     return (
         (electrons.pt >= 20)
         & (abs(electrons.eta) <= 2.5)
+        & electron_low_pt_scouting_id(electrons)
+        # Check CMSSW code for electron isolation
         # & (electrons.miniPFRelIso_all < 0.4)
         # & (electrons.cutBased >= electrons.LOOSE)
     )
 
+def muon_loose_scouting_id(muons: MuonArray):
+    """
+    Lifted directly from CMSSW
+
+    Bit map:
+    static const unsigned int GlobalMuon = 1 << 1;
+    static const unsigned int TrackerMuon = 1 << 2;
+    static const unsigned int PFMuon = 1 << 5;
+
+    is_<type>Muon definitions:
+    bool isGlobalMuon() const override { return type_ & GlobalMuon; }
+    bool isTrackerMuon() const override { return type_ & TrackerMuon; }
+    bool isPFMuon() const { return type_ & PFMuon; }
+
+    Loose ID definition
+    bool muon::isLooseMuon(const reco::Muon& muon) { return muon.isPFMuon() && (muon.isGlobalMuon() || muon.isTrackerMuon()); }
+    """
+
+    # Calling muons.type returns via the ak_array.type method showing the type of each field inside muons.
+    # We want the actual "type" field so we access it by name
+    isGlobalMuon = ((muons["type"] & (1 << 1))) != 0
+    isTrackerMuon = ((muons["type"] & (1 << 2))) != 0
+    # isPFMuon = ((muons["type"] & (1 << 5))) != 0
+
+    return (isGlobalMuon | isTrackerMuon) # & isPFMuon 
+
+def electron_low_pt_scouting_id(electrons: ElectronArray):
+    # Source
+    EB = (abs(electrons.eta) < 1.4)
+    EE = ((abs(electrons.eta) > 1.5) & (abs(electrons.eta) < 3.0)) # Should this be in the region 1.59 to 2.5?
+
+    EB_ID = (
+        (electrons.sigmaIetaIeta < 0.015)
+        & (electrons.hOverE < 0.2)
+        & (abs(electrons.dEtaIn) < 0.008)
+        & (abs(electrons.dPhiIn) < 0.06)
+        & (electrons.ecalIso / electrons.rawEnergy < 0.25)
+        & (electrons.trackIso / electrons.rawEnergy < 0.001)
+        # No requirement on I_H / E
+    )
+
+    EE_ID = (
+        (electrons.sigmaIetaIeta < 0.045)
+        & (electrons.hOverE < 0.2)
+        & (abs(electrons.dEtaIn) < 0.012)
+        & (abs(electrons.dPhiIn) < 0.06)
+        & (electrons.ecalIso / electrons.rawEnergy < 0.1)
+        & (electrons.trackIso / electrons.rawEnergy < 0.001)
+        # No requirement on I_H / E
+    )
+
+    return (EE & EE_ID | EB & EB_ID) 
+
 def veto_scouting_muons(muons: MuonArray):
-    # TODO: This won't work. Need to self define isolation and loose ID.
-    print("Muon fields")
-    print(muons.fields)
+    # TODO: Need to self define isolation
     return (
-        (muons.pt >= 10) & (abs(muons.eta) <= 2.4)# & (muons.looseId) & (muons.pfRelIso04_all < 0.25)
+        (muons.pt >= 10) 
+        & (abs(muons.eta) <= 2.4)
+        & (muon_loose_scouting_id(muons)) 
+        # PF iso?
+        # & (muons.looseId) 
+        # & (muons.pfRelIso04_all < 0.25)
     )
 
 
@@ -580,11 +636,10 @@ def ak4_jets_awayfromak8(
     electrons = events.Electron if not use_scouting else events.ScoutingElectron
     electrons = electrons[electrons.pt > electron_pt]
 
-    # In 2024 ScoutingMuon -> ScoutingMuonVtx or ScoutingMuonNoVtx due to tracking upgrade. 
-    # We prefer using ScoutingMuonVtx because this forces the muon to have been vertex fitted (better quality)
+    # In 2024 ScoutingMuon -> ScoutingMuonVtx or ScoutingMuonNoVtx 
+    # Vtx matches HLT, NoVtx matches ScoutingMuon in 2022-2023 scouting, therefore we use NoVtx
     muons = events.Muon if not use_scouting else (events.ScoutingMuonVtx if year == "2024" else events.ScoutingMuon)
     muons = muons[muons.pt > muon_pt]
-    print(muons.fields)
 
     ak4_sel = (
         (jets.pt >= pt)
@@ -595,8 +650,12 @@ def ak4_jets_awayfromak8(
     )
 
     # return top 2 jets sorted by btagPNetB
-    if sort_by == "btag": # TODO: This is not implemented for scouting. Would need to use PNet for B tagging
-        jets_pnetb = jets[ak.argsort(jets.btagPNetB, ascending=False)]
+    if sort_by == "btag": 
+        if not use_scouting:
+            jets_pnetb = jets[ak.argsort(jets.btagPNetB, ascending=False)]
+        else:
+            jets_pnetb = jets[ak.argsort(jets.particleNet_prob_b, ascending=False)]
+            
         return jets_pnetb[ak4_sel][:, :2]
     # return 2 jets closet to fatjet0 and fatjet1, respectively
     elif sort_by == "nearest":

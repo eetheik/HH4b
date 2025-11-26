@@ -799,7 +799,7 @@ class bbbbSkimmer(SkimmerABC):
         #########################
         print("starting object selection", f"{time.time() - start:.2f}")
 
-        veto_muon_sel = veto_muons(events.Muon) if not self.use_scouting else veto_scouting_muons(events.ScoutingMuonVtx if year == "2024" else events.ScoutingMuon)
+        veto_muon_sel = veto_muons(events.Muon) if not self.use_scouting else veto_scouting_muons(events.ScoutingMuonNoVtx if year == "2024" else events.ScoutingMuon)
         veto_electron_sel = veto_electrons(events.Electron)  if not self.use_scouting else veto_scouting_electrons(events.ScoutingElectron) 
         if self._region in ["semilep-tt", "zbb-DYLL-data"]:
             good_muon_sel = good_muons(events.Muon) 
@@ -1652,16 +1652,25 @@ class bbbbSkimmer(SkimmerABC):
                 add_selection("ak8bb_txbb", cut_txbb, *selection_args)
 
                 # HT > 600 (Fully efficient region for scouting HT trigger)
-                add_selection("ht500", eventVars["ht"] >= 600, *selection_args) 
+                add_selection("ht600", eventVars["ht"] >= 600, *selection_args) 
 
-                # top veto: no medium b-tagged AK4 jets with pT>30, |eta|<2.4, and dR(ak4, bbFatJet0) > 0.8
+                # Consider replacing 0lep with "for leptons require DeltaR>0.8 from the Xbb-tagged AK8 jet. This way we avoid electrons or muons from b hadron decays, which is the main thing"
+
+                # 0 veto leptons
+                # TODO: Investigate quality of lepton veto. Concern: poor scouting electron reconstruction.
+                add_selection(
+                    "0lep",
+                    (ak.sum(veto_muon_sel, axis=1) == 0) & (ak.sum(veto_electron_sel, axis=1) == 0),
+                    *selection_args,
+                )
+
                 medium_btag_th_dict = { # Commented out values are for deepFlavB
                     # "2022": 0.3086,
                     # "2022EE": 0.3196,
                     "2023": 0.1918, # Same as below
                     "2023BPix": 0.1923, # PNet medium WP using jetveto map, from https://btv-wiki.docs.cern.ch/PerformanceCalibration/ BTagPerf_240115_Summer23WPs_VetoMap.pdf
                     "2024": 0.1923, # TODO: Update working point for 2024.
-                }
+                } # It currently appears that the top veto isnt doing anything due to poor tagger performance
 
                 # no medium b-tagged AK4 jets with pT>30, |eta|<2.4, and dR(ak4, bbFatJet0) > 0.8
                 cut_top_veto = (
@@ -1671,18 +1680,7 @@ class bbbbSkimmer(SkimmerABC):
                     )
                     == 0
                 )
-                add_selection("top_veto", cut_top_veto, *selection_args)
-
-                # 0 veto leptons
-                # TODO: Investigate quality of lepton veto. Concern: poor scouting electron reconstruction.
-                # add_selection(
-                #     "0lep",
-                #     (ak.sum(veto_muon_sel, axis=1) == 0) & (ak.sum(veto_electron_sel, axis=1) == 0),
-                #     *selection_args,
-                # )
-
-                # TODO: Save this variable and plot it at the end to investigate effect of lepton veto
-                # lepton_veto = (ak.sum(veto_muon_sel, axis=1) == 0) & (ak.sum(veto_electron_sel, axis=1) == 0)
+                add_selection("top_veto", cut_top_veto, *selection_args) # This isn't doing anything right now because particle net btagging is very poor
 
         elif self._region == "zbb-Zto2Q-DYLL":
             # dummy selection for Zbb-Zto2Q-DYLL region
