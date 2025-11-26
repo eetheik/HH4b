@@ -172,8 +172,8 @@ def muon_loose_scouting_id(muons: MuonArray):
 
 def electron_low_pt_scouting_id(electrons: ElectronArray):
     # Source
-    EB = (abs(electrons.eta) < 1.4)
-    EE = ((abs(electrons.eta) > 1.5) & (abs(electrons.eta) < 3.0)) # Should this be in the region 1.59 to 2.5?
+    EB = (abs(electrons.eta) < 1.479)
+    EE = ((abs(electrons.eta) > 1.59) & (abs(electrons.eta) < 2.5))
 
     EB_ID = (
         (electrons.sigmaIetaIeta < 0.015)
@@ -531,9 +531,28 @@ def get_ak8jets(fatjets: FatJetArray): # TODO: This is the goldmine for the vari
 
         fatjets["ScoutParTTXbb"] = (
             fatjets.scoutGlobalParT_prob_Xbb / (
-                fatjets.scoutGlobalParT_prob_Xbb + fatjets.scoutGlobalParT_prob_QCD + fatjets.scoutGlobalParT_prob_Xcs + fatjets.scoutGlobalParT_prob_Xcc + fatjets.scoutGlobalParT_prob_Xgg + fatjets.scoutGlobalParT_prob_Xqq
+                fatjets.scoutGlobalParT_prob_Xbb + fatjets.scoutGlobalParT_prob_QCD
             )
         )
+
+        fatjets["ScoutParTTXbc"] = (
+            fatjets.scoutGlobalParT_prob_Xbc / (
+                fatjets.scoutGlobalParT_prob_Xbc + fatjets.scoutGlobalParT_prob_QCD
+            )
+        )
+
+        fatjets["ScoutParTTXbs"] = (
+            fatjets.scoutGlobalParT_prob_Xbs / (
+                fatjets.scoutGlobalParT_prob_Xbs + fatjets.scoutGlobalParT_prob_QCD
+            )
+        )
+
+        fatjets["ScoutParTTXcs"] = (
+            fatjets.scoutGlobalParT_prob_Xcs / (
+                fatjets.scoutGlobalParT_prob_Xcs + fatjets.scoutGlobalParT_prob_QCD
+            )
+        )
+
 
         # Correction factors because Patin requested to see them - 24/07/2025
         fatjets["ScoutParTmassCorrFactorX2p"] = fatjets.scoutGlobalParT_massCorrGenericX2p 

@@ -724,6 +724,9 @@ class bbbbSkimmer(SkimmerABC):
             "ScoutParTPXcs",
             "ScoutParTPXqq",
             "ScoutParTTXbb",
+            "ScoutParTTXcs",
+            "ScoutParTTXbs",
+            "ScoutParTTXbc",
             "ScoutParTmassGeneric",
             "ScoutParTmassCorrectedX2p",
             "ScoutParTmassCorrectedW2p",
@@ -1116,12 +1119,14 @@ class bbbbSkimmer(SkimmerABC):
 
         # Event variables
         met_pt = met.pt
+        met_phi = met.phi
         eventVars = {
             key: events[val].to_numpy()
             for key, val in self.skim_vars["Event"].items()
             if key in events.fields
         }
         eventVars["MET_pt"] = met_pt.to_numpy()
+        eventVars["MET_Phi"] = met_phi.to_numpy()
         eventVars["ht"] = ht.to_numpy()
         eventVars["nJets"] = ak.sum(jets_sel, axis=1).to_numpy() 
         eventVars["nFatJets"] = ak.num(fatjets).to_numpy()
@@ -1449,7 +1454,7 @@ class bbbbSkimmer(SkimmerABC):
                 "0lep",
                 (ak.sum(veto_muon_sel, axis=1) == 0) & (ak.sum(veto_electron_sel, axis=1) == 0),
                 *selection_args,
-            ) # this is for pre-sel and signal so not a concern for zbb scouting
+            ) 
 
             if self._region == "signal":
                 # >=1 bb AK8 jets (ordered by TXbb) with TXbb > 0.8
@@ -1642,7 +1647,7 @@ class bbbbSkimmer(SkimmerABC):
                 zbb_ak8jets_dphi = np.abs(
                     del_phi(bbFatJetVars["bbFatJetPhi"][:, 0], bbFatJetVars["bbFatJetPhi"][:, 1])
                 )
-                add_selection("ak8_back2back", zbb_ak8jets_dphi >= (np.pi / 2), *selection_args)
+                # add_selection("ak8_back2back", zbb_ak8jets_dphi >= (np.pi / 2), *selection_args)
 
                 # >= 1 AK8 jet with ParT/PNet Xbb >= 0.1
                 cut_txbb = (
@@ -1658,29 +1663,64 @@ class bbbbSkimmer(SkimmerABC):
 
                 # 0 veto leptons
                 # TODO: Investigate quality of lepton veto. Concern: poor scouting electron reconstruction.
-                add_selection(
-                    "0lep",
-                    (ak.sum(veto_muon_sel, axis=1) == 0) & (ak.sum(veto_electron_sel, axis=1) == 0),
-                    *selection_args,
+                zero_lep = (ak.sum(veto_muon_sel, axis=1) == 0) & (ak.sum(veto_electron_sel, axis=1) == 0)
+
+                # add_selection("0lep", zero_lep, *selection_args)
+
+                # First cut which we want to investigate on tt to2q & lnu
+                electrons = events.ScoutingElectron[veto_electron_sel] # these are the loosest electrons, so we will use them here
+                muons = events.ScoutingMuonNoVtx[veto_muon_sel] # same as above
+
+                dphi_fj0_met = del_phi(bbFatJetVars["bbFatJetPhi"][:, 0], eventVars["MET_Phi"])
+                dphi_fj0_mu = del_phi(bbFatJetVars["bbFatJetPhi"][:, 0], muons.phi)
+                dphi_fj0_el = del_phi(bbFatJetVars["bbFatJetPhi"][:, 0], electrons.phi)
+
+                met_opposite = dphi_fj0_met >= (np.pi/2)
+                mu_opposite = ak.any(dphi_fj0_mu >= (np.pi/2), axis=1)
+                el_opposite = ak.any(dphi_fj0_el >= (np.pi/2), axis=1)
+                ak8_opposite = zbb_ak8jets_dphi >= (np.pi / 2)
+
+                lepton_opposite = mu_opposite | el_opposite
+
+                cut_TTto2QLnu = ~(lepton_opposite & met_opposite & ak8_opposite)
+
+                # add_selection("cut_TTto2QLnu", cut_TTto2QLnu, *selection_args)
+
+                # Second cut on tt to 4q
+                W_tagged_subl_opposite_fatjets = ak.any(
+                    ak8_opposite & (
+                        (bbFatJetVars["bbFatJetScoutParTTXcs"][:, 1:] >= 0.1) 
+                        | (bbFatJetVars["bbFatJetScoutParTTXbs"][:, 1:] >= 0.1) 
+                        | (bbFatJetVars["bbFatJetScoutParTTXbc"][:, 1:] >= 0.1)
+                    ),
+                    axis=1
                 )
 
-                medium_btag_th_dict = { # Commented out values are for deepFlavB
-                    # "2022": 0.3086,
-                    # "2022EE": 0.3196,
-                    "2023": 0.1918, # Same as below
-                    "2023BPix": 0.1923, # PNet medium WP using jetveto map, from https://btv-wiki.docs.cern.ch/PerformanceCalibration/ BTagPerf_240115_Summer23WPs_VetoMap.pdf
-                    "2024": 0.1923, # TODO: Update working point for 2024.
-                } # It currently appears that the top veto isnt doing anything due to poor tagger performance
+                cut_tt4Q_veto = ~W_tagged_subl_opposite_fatjets
+
+                # add_selection("cut_tt4Q_veto", cut_tt4Q_veto, *selection_args)
+
+                eventVars["fj_0lep"] = {k: v[zero_lep] for k, v in bbFatJetVars.items()}
+                eventVars["fj_TTto2QLnu"] = {k: v[cut_TTto2QLnu] for k, v in bbFatJetVars.items()}
+                eventVars["fj_tt4Q_veto"] = {k: v[cut_tt4Q_veto] for k, v in bbFatJetVars.items()}
+
+                # medium_btag_th_dict = { # Commented out values are for deepFlavB
+                #     # "2022": 0.3086,
+                #     # "2022EE": 0.3196,
+                #     "2023": 0.1918, # Same as below
+                #     "2023BPix": 0.1923, # PNet medium WP using jetveto map, from https://btv-wiki.docs.cern.ch/PerformanceCalibration/ BTagPerf_240115_Summer23WPs_VetoMap.pdf
+                #     "2024": 0.1923, # TODO: Update working point for 2024.
+                # } # It currently appears that the top veto isnt doing anything due to poor tagger performance
 
                 # no medium b-tagged AK4 jets with pT>30, |eta|<2.4, and dR(ak4, bbFatJet0) > 0.8
-                cut_top_veto = (
-                    ak.sum(
-                        ak4_jets_awayfromak8.particleNet_prob_b >= medium_btag_th_dict[year],
-                        axis=1,
-                    )
-                    == 0
-                )
-                add_selection("top_veto", cut_top_veto, *selection_args) # This isn't doing anything right now because particle net btagging is very poor
+                # cut_top_veto = (
+                #     ak.sum(
+                #         ak4_jets_awayfromak8.particleNet_prob_b >= medium_btag_th_dict[year],
+                #         axis=1,
+                #     )
+                #     == 0
+                # )
+                # add_selection("top_veto", cut_top_veto, *selection_args) # This isn't doing anything right now because particle net btagging is very poor
 
         elif self._region == "zbb-Zto2Q-DYLL":
             # dummy selection for Zbb-Zto2Q-DYLL region
