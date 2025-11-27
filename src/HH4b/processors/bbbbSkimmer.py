@@ -801,8 +801,8 @@ class bbbbSkimmer(SkimmerABC):
         # Object definitions
         #########################
         print("starting object selection", f"{time.time() - start:.2f}")
-
-        veto_muon_sel = veto_muons(events.Muon) if not self.use_scouting else veto_scouting_muons(events.ScoutingMuonNoVtx if year == "2024" else events.ScoutingMuon)
+        print(events.fields)
+        veto_muon_sel = veto_muons(events.Muon) if not self.use_scouting else veto_scouting_muons(events.ScoutingMuonNoVtx)
         veto_electron_sel = veto_electrons(events.Electron)  if not self.use_scouting else veto_scouting_electrons(events.ScoutingElectron) 
         if self._region in ["semilep-tt", "zbb-DYLL-data"]:
             good_muon_sel = good_muons(events.Muon) 
@@ -970,7 +970,6 @@ class bbbbSkimmer(SkimmerABC):
                 **self.zbb_top_veto_ak4_selection,
                 **self.zbb_top_veto_lepton_selection,
                 sort_by="none",
-                year = year,
                 use_scouting=self.use_scouting
             )
         else:

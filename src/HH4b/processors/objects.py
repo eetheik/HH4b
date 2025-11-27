@@ -648,7 +648,6 @@ def ak4_jets_awayfromak8(
     electron_pt: float,
     muon_pt: float,
     sort_by: str = "btag",
-    year: str = "2023", # Dirty fix to pass in year for scouting (doesn't affect offline)
     use_scouting: bool = False,
 ):
     """AK4 jets nonoverlapping with AK8 fatjets"""
@@ -657,7 +656,7 @@ def ak4_jets_awayfromak8(
 
     # In 2024 ScoutingMuon -> ScoutingMuonVtx or ScoutingMuonNoVtx 
     # Vtx matches HLT, NoVtx matches ScoutingMuon in 2022-2023 scouting, therefore we use NoVtx
-    muons = events.Muon if not use_scouting else (events.ScoutingMuonVtx if year == "2024" else events.ScoutingMuon)
+    muons = events.Muon if not use_scouting else (events.ScoutingMuonVtx)
     muons = muons[muons.pt > muon_pt]
 
     ak4_sel = (
