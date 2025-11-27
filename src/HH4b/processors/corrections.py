@@ -312,15 +312,12 @@ class JECs:
         jets = self._add_jec_variables(jets, rho, isData, use_scouting=use_scouting)
 
         apply_jecs = ak.any(jets.pt) if (applyData or not isData) else False
-        print("applyjecs: ", apply_jecs)
 
         if not ("v12" in nano_version or "v15_scouting" in nano_version):
             apply_jecs = False
     
         if not apply_jecs:
             return jets, None
-
-        print("applyjecs: ", apply_jecs)
 
         jec_vars = ["pt"]  # variables we are saving that are affected by JECs
         jet_factory_str = "ak4"

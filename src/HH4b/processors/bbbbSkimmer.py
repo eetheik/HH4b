@@ -801,8 +801,11 @@ class bbbbSkimmer(SkimmerABC):
         # Object definitions
         #########################
         print("starting object selection", f"{time.time() - start:.2f}")
-        print(events.fields)
-        veto_muon_sel = veto_muons(events.Muon) if not self.use_scouting else veto_scouting_muons(events.ScoutingMuonNoVtx)
+
+        if not self.use_scouting:
+            veto_muon_sel = veto_muons(events.Muon)
+        else:
+            veto_muon_sel = veto_scouting_muons(events.ScoutingMuonNoVtx if hasattr(events, "ScoutingMuonNoVtx") else events.ScoutingMuon)
         veto_electron_sel = veto_electrons(events.Electron)  if not self.use_scouting else veto_scouting_electrons(events.ScoutingElectron) 
         if self._region in ["semilep-tt", "zbb-DYLL-data"]:
             good_muon_sel = good_muons(events.Muon) 
@@ -844,14 +847,40 @@ class bbbbSkimmer(SkimmerABC):
                     events_met["MetUnclustEnUpDeltaY"] = np.abs(deltaY_up - deltaY_down) / 2
                 else:
                     raise AttributeError("Neither 'MET' nor 'PuppiMET' attribute found in events.")
+                
+                # Correct MET 
+                met = JEC_loader.met_factory.build(events_met, jets, {}) if isData else events_met
             if self.use_scouting:
                 if hasattr(events, "ScoutingMET"):
                     events_met = events.ScoutingMET 
                 else:
                     raise AttributeError("'ScoutingMET' attribute not found in events.")
 
-            # Currently do not correct MET in scouting. TODO: Can this be done?
-            met = JEC_loader.met_factory.build(events_met, jets, {}) if isData and not self.use_scouting else events_met
+                # We do not use coffea MET factory because it was found that coffea implementation 
+                # is not the same as the official type 1 MET correction (However the below
+                # implementation is not correct either; leptons are ignored. This is sufficient for us
+                # given ~ poor quality of used JECs and possible 0lep veto)
+
+                # We perform only the type 1 MET correction in scouting (ignoring leptons):
+                dpt = jets.pt_raw - jets.pt_jec
+
+                dpx = dpt * np.cos(jets.phi)
+                dpy = dpt * np.sin(jets.phi)
+
+                met_px_raw = events_met.pt * np.cos(events_met.phi)
+                met_py_raw = events_met.pt * np.sin(events_met.phi)
+
+                met_px_corr = met_px_raw + np.sum(dpx) # sum since many jets
+                met_py_corr = met_py_raw + np.sum(dpy)
+                
+                met_pt_corr = np.sqrt(met_px_corr*met_px_corr + met_py_corr*met_py_corr)
+                met_phi_corr = np.arctan2(met_py_corr, met_px_corr)
+
+                met = ak.zip({
+                    "pt": met_pt_corr,
+                    "phi": met_phi_corr
+                })
+
         else:
             if hasattr(events, "MET"):
                 met = events.MET if not self.use_scouting else events.ScoutingMET
@@ -1125,7 +1154,7 @@ class bbbbSkimmer(SkimmerABC):
             if key in events.fields
         }
         eventVars["MET_pt"] = met_pt.to_numpy()
-        eventVars["MET_Phi"] = met_phi.to_numpy()
+        eventVars["MET_phi"] = met_phi.to_numpy()
         eventVars["ht"] = ht.to_numpy()
         eventVars["nJets"] = ak.sum(jets_sel, axis=1).to_numpy() 
         eventVars["nFatJets"] = ak.num(fatjets).to_numpy()
@@ -1668,9 +1697,9 @@ class bbbbSkimmer(SkimmerABC):
 
                 # First cut which we want to investigate on tt to2q & lnu
                 electrons = events.ScoutingElectron[veto_electron_sel] # these are the loosest electrons, so we will use them here
-                muons = events.ScoutingMuonNoVtx[veto_muon_sel] # same as above
+                muons = events.ScoutingMuonNoVtx[veto_muon_sel] if hasattr(events, "ScoutingMuonNoVtx") else events.ScoutingMuon[veto_muon_sel]
 
-                dphi_fj0_met = del_phi(bbFatJetVars["bbFatJetPhi"][:, 0], eventVars["MET_Phi"])
+                dphi_fj0_met = del_phi(bbFatJetVars["bbFatJetPhi"][:, 0], eventVars["MET_phi"])
                 dphi_fj0_mu = del_phi(bbFatJetVars["bbFatJetPhi"][:, 0], muons.phi)
                 dphi_fj0_el = del_phi(bbFatJetVars["bbFatJetPhi"][:, 0], electrons.phi)
 

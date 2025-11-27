@@ -160,6 +160,10 @@ def muon_loose_scouting_id(muons: MuonArray):
 
     Loose ID definition
     bool muon::isLooseMuon(const reco::Muon& muon) { return muon.isPFMuon() && (muon.isGlobalMuon() || muon.isTrackerMuon()); }
+
+    We omit the muon.isPFMuon() part because this flag is not defined in scouting.
+
+    TODO: Do any quality checks go into isPFMuon? These could still be loosely implemented.
     """
 
     # Calling muons.type returns via the ak_array.type method showing the type of each field inside muons.
@@ -175,13 +179,17 @@ def electron_low_pt_scouting_id(electrons: ElectronArray):
     EB = (abs(electrons.eta) < 1.479)
     EE = ((abs(electrons.eta) > 1.59) & (abs(electrons.eta) < 2.5))
 
+    # Problem: 2023 ScoutingElectrons do not have rawEnergy.
+    # When p_T >> m_e then rapidity ~ pseudorapidity and this is valid. 
+    ENERGY = np.sqrt(electrons.pt * electrons.pt + electrons.m * electrons.m) * np.cosh(electrons.eta) if not hasattr(electrons, "rawEnergy") else electrons.rawEnergy
+    
     EB_ID = (
         (electrons.sigmaIetaIeta < 0.015)
         & (electrons.hOverE < 0.2)
         & (abs(electrons.dEtaIn) < 0.008)
         & (abs(electrons.dPhiIn) < 0.06)
-        & (electrons.ecalIso / electrons.rawEnergy < 0.25)
-        & (electrons.trackIso / electrons.rawEnergy < 0.001)
+        & (electrons.ecalIso / ENERGY < 0.25)
+        & (electrons.trackIso / ENERGY < 0.001)
         # No requirement on I_H / E
     )
 
@@ -190,8 +198,8 @@ def electron_low_pt_scouting_id(electrons: ElectronArray):
         & (electrons.hOverE < 0.2)
         & (abs(electrons.dEtaIn) < 0.012)
         & (abs(electrons.dPhiIn) < 0.06)
-        & (electrons.ecalIso / electrons.rawEnergy < 0.1)
-        & (electrons.trackIso / electrons.rawEnergy < 0.001)
+        & (electrons.ecalIso / ENERGY < 0.1)
+        & (electrons.trackIso / ENERGY < 0.001)
         # No requirement on I_H / E
     )
 
@@ -654,9 +662,13 @@ def ak4_jets_awayfromak8(
     electrons = events.Electron if not use_scouting else events.ScoutingElectron
     electrons = electrons[electrons.pt > electron_pt]
 
-    # In 2024 ScoutingMuon -> ScoutingMuonVtx or ScoutingMuonNoVtx 
-    # Vtx matches HLT, NoVtx matches ScoutingMuon in 2022-2023 scouting, therefore we use NoVtx
-    muons = events.Muon if not use_scouting else (events.ScoutingMuonVtx)
+    if not use_scouting:
+        muons = events.Muon 
+    else:
+        # In 2024 ScoutingMuon -> ScoutingMuonVtx or ScoutingMuonNoVtx 
+        # NoVtx matches ScoutingMuon in 2022-2023 scouting, therefore we use NoVtx 
+        muons = events.ScoutingMuonNoVtx if hasattr(events, "ScoutingMuonNoVtx") else events.ScoutingMuon
+
     muons = muons[muons.pt > muon_pt]
 
     ak4_sel = (
@@ -672,7 +684,7 @@ def ak4_jets_awayfromak8(
         if not use_scouting:
             jets_pnetb = jets[ak.argsort(jets.btagPNetB, ascending=False)]
         else:
-            jets_pnetb = jets[ak.argsort(jets.particleNet_prob_b, ascending=False)]
+            jets_pnetb = jets[ak.argsort(jets.particleNet_prob_b, ascending=False)] # WARNING: PNet b-tagging is poor in Scouting.
             
         return jets_pnetb[ak4_sel][:, :2]
     # return 2 jets closet to fatjet0 and fatjet1, respectively
