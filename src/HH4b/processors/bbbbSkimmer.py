@@ -1465,6 +1465,9 @@ class bbbbSkimmer(SkimmerABC):
             cut_jetveto = get_jetveto_event(jets, year)
             add_selection("ak4_jetveto_map", cut_jetveto, *selection_args)
 
+            # cut_fatjetveto = get_jetveto_event(fatjets, year)
+            # add_selection("ak8_jetveto_map", cut_fatjetveto, *selection_args)
+
         if self._region == "pre-sel" or self._region == "signal":
             # >=2 AK8 jets passing selections
             add_selection("ak8_numjets", (ak.num(fatjets) >= 2), *selection_args)
@@ -1693,7 +1696,7 @@ class bbbbSkimmer(SkimmerABC):
                 # TODO: Investigate quality of lepton veto. Concern: poor scouting electron reconstruction.
                 zero_lep = (ak.sum(veto_muon_sel, axis=1) == 0) & (ak.sum(veto_electron_sel, axis=1) == 0)
 
-                # add_selection("0lep", zero_lep, *selection_args)
+                add_selection("0lep", zero_lep, *selection_args)
 
                 # First cut which we want to investigate on tt to2q & lnu
                 electrons = events.ScoutingElectron[veto_electron_sel] # these are the loosest electrons, so we will use them here
@@ -1898,7 +1901,7 @@ class bbbbSkimmer(SkimmerABC):
         for key in weights._weights:
             weights_dict[f"single_weight_{key}"] = weights.partial_weight([key])
 
-        ###################### alpha_S and PDF variations ######################  # TODO: ""These are only needed if we do variations" - Fikri" - Patin
+        ###################### alpha_S and PDF variations ######################
         if ("HHTobbbb" in dataset or "HHto4B" in dataset) or dataset.startswith("TTto"):
             scale_weights = get_scale_weights(events)
             if scale_weights is not None:
