@@ -182,9 +182,9 @@ class bbbbSkimmer(SkimmerABC):
     }
 
     zbb_fatjet_scouting_selection = {  
-        "pt": 150, # lower pt bound to 150 for scouting fatjet
-        "eta": 2.2, # Changed to 2.2 from 2.4, source Patin
-        "msd": 0,
+        "pt": 200, # lower pt bound to 150 for scouting fatjet
+        "eta": 2.4, # Changed to 2.2 from 2.4, source Patin
+        "msd": 30,
         "mreg": 0,
     }
 
@@ -794,7 +794,6 @@ class bbbbSkimmer(SkimmerABC):
 
         # JEC factory loader
         JEC_loader = JECs(year = year, use_scouting=self.use_scouting)
-        print(year)
 
         #########################
         # Object definitions
@@ -1708,10 +1707,9 @@ class bbbbSkimmer(SkimmerABC):
                 electrons = ak.Array(events.ScoutingElectron[veto_electron_sel]) # these are the loosest electrons, so we will use them here
                 muons = ak.Array(events.ScoutingMuonNoVtx[veto_muon_sel]) if hasattr(events, "ScoutingMuonNoVtx") else ak.Array(events.ScoutingMuon[veto_muon_sel])
 
-                fj0_phi = bbFatJetVars["bbFatJetPhi"][:, 0]
-                dphi_fj0_met = del_phi(fj0_phi, eventVars["MET_phi"])
-                dphi_fj0_mu = del_phi(fj0_phi, muons.phi)
-                dphi_fj0_el = del_phi(fj0_phi, electrons.phi)
+                dphi_fj0_met = del_phi(bbFatJetVars["bbFatJetPhi"][:, 0], eventVars["MET_phi"])
+                dphi_fj0_mu = np.abs((muons.phi - bbFatJetVars["bbFatJetPhi"][:, 0][:, np.newaxis] + np.pi) % (2 * np.pi) - np.pi)
+                dphi_fj0_el = np.abs((electrons.phi - bbFatJetVars["bbFatJetPhi"][:, 0][:, np.newaxis] + np.pi) % (2 * np.pi) - np.pi)
 
                 met_opposite = dphi_fj0_met >= (np.pi/2)
                 mu_opposite = ak.any(dphi_fj0_mu >= (np.pi/2), axis=1)
@@ -1724,14 +1722,14 @@ class bbbbSkimmer(SkimmerABC):
 
                 add_selection("cut_TTto2QLnu", cut_TTto2QLnu, *selection_args)
 
-                dphi_fj0_subl = del_phi(fj0_phi, bbFatJetVars["bbFatJetPhi"][:, 1:]) # all subl fatjets
+                dphi_fj0_subl = del_phi(bbFatJetVars["bbFatJetPhi"][:, 0], bbFatJetVars["bbFatJetPhi"][:, 1:]) # all subl fatjets
                 subl_opposite = dphi_fj0_subl >= (np.pi/2)
 
                 # Second cut on tt to 4q
                 w_tag = (
-                    (bbFatJetVars["bbFatJetScoutParTTXcs"][:, 1:] >= 0.2)
-                    | (bbFatJetVars["bbFatJetScoutParTTXbs"][:, 1:] >= 0.2)
-                    | (bbFatJetVars["bbFatJetScoutParTTXbc"][:, 1:] >= 0.2)
+                    (bbFatJetVars["bbFatJetScoutParTTXcs"][:, 1:] >= 0.1)
+                    | (bbFatJetVars["bbFatJetScoutParTTXbs"][:, 1:] >= 0.1)
+                    | (bbFatJetVars["bbFatJetScoutParTTXbc"][:, 1:] >= 0.1)
                 )
 
                 W_tagged_subl_opposite_fatjets = ak.any(ak8_opposite & w_tag, axis=1)
