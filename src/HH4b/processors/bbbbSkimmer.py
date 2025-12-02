@@ -1678,7 +1678,7 @@ class bbbbSkimmer(SkimmerABC):
                 # eta cut already done
 
                 def del_phi(phi1, phi2):
-                    return np.abs((phi1 - phi2 + np.pi) % (2 * np.pi) - np.pi)
+                    return ak.abs((phi1 - phi2 + np.pi) % (2 * np.pi) - np.pi)
 
                 # back-to-back AK8 jets
                 zbb_ak8jets_dphi = np.abs(
@@ -1708,9 +1708,10 @@ class bbbbSkimmer(SkimmerABC):
                 electrons = events.ScoutingElectron[veto_electron_sel] # these are the loosest electrons, so we will use them here
                 muons = events.ScoutingMuonNoVtx[veto_muon_sel] if hasattr(events, "ScoutingMuonNoVtx") else events.ScoutingMuon[veto_muon_sel]
 
-                dphi_fj0_met = del_phi(bbFatJetVars["bbFatJetPhi"][:, 0], eventVars["MET_phi"])
-                dphi_fj0_mu = del_phi(bbFatJetVars["bbFatJetPhi"][:, 0], muons.phi)
-                dphi_fj0_el = del_phi(bbFatJetVars["bbFatJetPhi"][:, 0], electrons.phi)
+                fj0_phi = ak.array(bbFatJetVars["bbFatJetPhi"][:, 0])
+                dphi_fj0_met = del_phi(fj0_phi, eventVars["MET_phi"])
+                dphi_fj0_mu = del_phi(fj0_phi, muons.phi)
+                dphi_fj0_el = del_phi(fj0_phi, electrons.phi)
 
                 met_opposite = dphi_fj0_met >= (np.pi/2)
                 mu_opposite = ak.any(dphi_fj0_mu >= (np.pi/2), axis=1)
@@ -1723,15 +1724,17 @@ class bbbbSkimmer(SkimmerABC):
 
                 add_selection("cut_TTto2QLnu", cut_TTto2QLnu, *selection_args)
 
+                dphi_fj0_subl = del_phi(fj0_phi, bbFatJetVars["bbFatJetPhi"][:, 1:]) # all subl fatjets
+                subl_opposite = dphi_fj0_subl >= (np.pi/2)
+
                 # Second cut on tt to 4q
-                W_tagged_subl_opposite_fatjets = ak.any(
-                    ak8_opposite & (
-                        (bbFatJetVars["bbFatJetScoutParTTXcs"][:, 1:] >= 0.2) 
-                        | (bbFatJetVars["bbFatJetScoutParTTXbs"][:, 1:] >= 0.2) 
-                        | (bbFatJetVars["bbFatJetScoutParTTXbc"][:, 1:] >= 0.2)
-                    ),
-                    axis=1
+                w_tag = (
+                    (bbFatJetVars["bbFatJetScoutParTTXcs"][:, 1:] >= 0.2)
+                    | (bbFatJetVars["bbFatJetScoutParTTXbs"][:, 1:] >= 0.2)
+                    | (bbFatJetVars["bbFatJetScoutParTTXbc"][:, 1:] >= 0.2)
                 )
+
+                W_tagged_subl_opposite_fatjets = ak.any(ak8_opposite & w_tag, axis=1)
 
                 cut_tt4Q_veto = ~W_tagged_subl_opposite_fatjets
 
