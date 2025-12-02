@@ -766,7 +766,6 @@ class bbbbSkimmer(SkimmerABC):
         print(year)
         is_run3 = year in ["2022", "2022EE", "2023", "2023BPix", "2024"] 
         dataset = "_".join(events.metadata["dataset"].split("_")[1:])
-        dataset = "Zto2Q-4Jets_HT-400to600"
         isData = not hasattr(events, "genWeight")
 
         # datasets for saving jec variations
@@ -806,7 +805,8 @@ class bbbbSkimmer(SkimmerABC):
             veto_muon_sel = veto_muons(events.Muon)
         else:
             veto_muon_sel = veto_scouting_muons(events.ScoutingMuonNoVtx if hasattr(events, "ScoutingMuonNoVtx") else events.ScoutingMuon)
-        veto_electron_sel = veto_electrons(events.Electron)  if not self.use_scouting else veto_scouting_electrons(events.ScoutingElectron) 
+
+        veto_electron_sel = veto_electrons(events.Electron) if not self.use_scouting else veto_scouting_electrons(events.ScoutingElectron) 
         if self._region in ["semilep-tt", "zbb-DYLL-data"]:
             good_muon_sel = good_muons(events.Muon) 
             muons = events.Muon[good_muon_sel] 
@@ -1678,7 +1678,7 @@ class bbbbSkimmer(SkimmerABC):
                 # eta cut already done
 
                 def del_phi(phi1, phi2):
-                    return ak.abs((phi1 - phi2 + np.pi) % (2 * np.pi) - np.pi)
+                    return np.abs((phi1 - phi2 + np.pi) % (2 * np.pi) - np.pi)
 
                 # back-to-back AK8 jets
                 zbb_ak8jets_dphi = np.abs(
@@ -1705,10 +1705,10 @@ class bbbbSkimmer(SkimmerABC):
                 # add_selection("0lep", zero_lep, *selection_args)
 
                 # First cut which we want to investigate on tt to2q & lnu
-                electrons = events.ScoutingElectron[veto_electron_sel] # these are the loosest electrons, so we will use them here
-                muons = events.ScoutingMuonNoVtx[veto_muon_sel] if hasattr(events, "ScoutingMuonNoVtx") else events.ScoutingMuon[veto_muon_sel]
+                electrons = ak.Array(events.ScoutingElectron[veto_electron_sel]) # these are the loosest electrons, so we will use them here
+                muons = ak.Array(events.ScoutingMuonNoVtx[veto_muon_sel]) if hasattr(events, "ScoutingMuonNoVtx") else ak.Array(events.ScoutingMuon[veto_muon_sel])
 
-                fj0_phi = ak.array(bbFatJetVars["bbFatJetPhi"][:, 0])
+                fj0_phi = bbFatJetVars["bbFatJetPhi"][:, 0]
                 dphi_fj0_met = del_phi(fj0_phi, eventVars["MET_phi"])
                 dphi_fj0_mu = del_phi(fj0_phi, muons.phi)
                 dphi_fj0_el = del_phi(fj0_phi, electrons.phi)
