@@ -762,11 +762,11 @@ class bbbbSkimmer(SkimmerABC):
         start = time.time()
         print("Starting")
         print("# events", len(events))
-
         year = events.metadata["dataset"].split("_")[0]
         print(year)
         is_run3 = year in ["2022", "2022EE", "2023", "2023BPix", "2024"] 
         dataset = "_".join(events.metadata["dataset"].split("_")[1:])
+        dataset = "Zto2Q-4Jets_HT-400to600"
         isData = not hasattr(events, "genWeight")
 
         # datasets for saving jec variations
@@ -1654,11 +1654,17 @@ class bbbbSkimmer(SkimmerABC):
                 # >=2 AK8 jets
                 add_selection("num_ak8jets", eventVars["nFatJets"] >= 2, *selection_args)
                 # FatJet0 with pT>300, mSD>30
+
                 cut_pt_lead = (
                     (bbFatJetVars["bbFatJetPt"][:, 0] >= 300) # Delta R(bb) = 2m_H / p_T, so p_T ~ 312.5 would be boosted regime
                     & (bbFatJetVars["bbFatJetMsd"][:, 0] >= 30) 
                 )
                 add_selection("ak8_ptmSD_lead", cut_pt_lead, *selection_args) # Includes a cut on leading pt as well
+
+                cut_txbb_lead = (
+                    (bbFatJetVars["bbFatJetScoutParTTXbb"][:, 0] >= 0.1) 
+                )
+                add_selection("ak8_TXbb_lead", cut_txbb_lead, *selection_args)
 
                 # FatJet1 with pT>200
                 cut_pt_subl = (
@@ -1678,14 +1684,14 @@ class bbbbSkimmer(SkimmerABC):
                 zbb_ak8jets_dphi = np.abs(
                     del_phi(bbFatJetVars["bbFatJetPhi"][:, 0], bbFatJetVars["bbFatJetPhi"][:, 1])
                 )
-                add_selection("ak8_back2back", zbb_ak8jets_dphi >= (np.pi / 2), *selection_args)
+                # add_selection("ak8_back2back", zbb_ak8jets_dphi >= (np.pi / 2), *selection_args)
 
                 # >= 1 AK8 jet with ParT/PNet Xbb >= 0.1
-                cut_txbb = (
-                    (np.sum(bbFatJetVars["bbFatJetScoutParTTXbb"][:, :2] >= 0.1, axis=1) >= 1)
-                )
+                # cut_txbb = (
+                #     (np.sum(bbFatJetVars["bbFatJetScoutParTTXbb"][:, :2] >= 0.1, axis=1) >= 1)
+                # )
                
-                add_selection("ak8bb_txbb", cut_txbb, *selection_args)
+                # add_selection("ak8bb_txbb", cut_txbb, *selection_args)
 
                 # HT > 600 (Fully efficient region for scouting HT trigger)
                 add_selection("ht600", eventVars["ht"] >= 600, *selection_args) 
@@ -1694,9 +1700,9 @@ class bbbbSkimmer(SkimmerABC):
 
                 # 0 veto leptons
                 # TODO: Investigate quality of lepton veto. Concern: poor scouting electron reconstruction.
-                zero_lep = (ak.sum(veto_muon_sel, axis=1) == 0) & (ak.sum(veto_electron_sel, axis=1) == 0)
+                # zero_lep = (ak.sum(veto_muon_sel, axis=1) == 0) & (ak.sum(veto_electron_sel, axis=1) == 0)
 
-                add_selection("0lep", zero_lep, *selection_args)
+                # add_selection("0lep", zero_lep, *selection_args)
 
                 # First cut which we want to investigate on tt to2q & lnu
                 electrons = events.ScoutingElectron[veto_electron_sel] # these are the loosest electrons, so we will use them here
@@ -1715,25 +1721,25 @@ class bbbbSkimmer(SkimmerABC):
 
                 cut_TTto2QLnu = ~(lepton_opposite & met_opposite & ak8_opposite)
 
-                # add_selection("cut_TTto2QLnu", cut_TTto2QLnu, *selection_args)
+                add_selection("cut_TTto2QLnu", cut_TTto2QLnu, *selection_args)
 
                 # Second cut on tt to 4q
                 W_tagged_subl_opposite_fatjets = ak.any(
                     ak8_opposite & (
-                        (bbFatJetVars["bbFatJetScoutParTTXcs"][:, 1:] >= 0.1) 
-                        | (bbFatJetVars["bbFatJetScoutParTTXbs"][:, 1:] >= 0.1) 
-                        | (bbFatJetVars["bbFatJetScoutParTTXbc"][:, 1:] >= 0.1)
+                        (bbFatJetVars["bbFatJetScoutParTTXcs"][:, 1:] >= 0.2) 
+                        | (bbFatJetVars["bbFatJetScoutParTTXbs"][:, 1:] >= 0.2) 
+                        | (bbFatJetVars["bbFatJetScoutParTTXbc"][:, 1:] >= 0.2)
                     ),
                     axis=1
                 )
 
                 cut_tt4Q_veto = ~W_tagged_subl_opposite_fatjets
 
-                # add_selection("cut_tt4Q_veto", cut_tt4Q_veto, *selection_args)
+                add_selection("cut_tt4Q_veto", cut_tt4Q_veto, *selection_args)
 
-                eventVars["fj_0lep"] = {k: v[zero_lep] for k, v in bbFatJetVars.items()}
-                eventVars["fj_TTto2QLnu"] = {k: v[cut_TTto2QLnu] for k, v in bbFatJetVars.items()}
-                eventVars["fj_tt4Q_veto"] = {k: v[cut_tt4Q_veto] for k, v in bbFatJetVars.items()}
+                # eventVars["fj_0lep"] = {k: v[zero_lep] for k, v in bbFatJetVars.items()}
+                # eventVars["fj_TTto2QLnu"] = {k: v[cut_TTto2QLnu] for k, v in bbFatJetVars.items()}
+                # eventVars["fj_tt4Q_veto"] = {k: v[cut_tt4Q_veto] for k, v in bbFatJetVars.items()}
 
                 # medium_btag_th_dict = { # Commented out values are for deepFlavB
                 #     # "2022": 0.3086,
