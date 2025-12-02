@@ -1312,10 +1312,10 @@ class bbbbSkimmer(SkimmerABC):
             **genVars,
             **eventVars,
             **pileupVars,
-            **DSTVars, # DST instead of HLT for scouting
-            **L1vars,
-            **ak4JetAwayVars,
-            **ak8FatJetVars,
+            # **DSTVars, # DST instead of HLT for scouting
+            # **L1vars,
+            # **ak4JetAwayVars,
+            # **ak8FatJetVars,
             **bbFatJetVars,
             # **trigObjFatJetVars, # Not used in scouting
             # **vbfJetVars, # Not used in scouting
