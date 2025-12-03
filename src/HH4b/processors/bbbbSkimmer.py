@@ -880,6 +880,8 @@ class bbbbSkimmer(SkimmerABC):
                     "phi": met_phi_corr
                 })
 
+                del dpt, dpx, dpy, met_px_raw, met_py_raw, met_px_corr, met_py_corr, met_pt_corr, met_phi_corr
+
         else:
             if hasattr(events, "MET"):
                 met = events.MET if not self.use_scouting else events.ScoutingMET
@@ -965,7 +967,6 @@ class bbbbSkimmer(SkimmerABC):
                 jec_shifted_bbfatjetvars[jec_var] = tdict
 
         # VBF objects
-        # TODO: Can't do in scouting because no electron reco
         if not self.use_scouting:
             vbf_jets = objects.vbf_jets(
                 jets,
@@ -985,7 +986,7 @@ class bbbbSkimmer(SkimmerABC):
                 **self.ak4_bjet_lepton_selection,
                 sort_by="nearest",
             )
-        elif self._region == "zbb":
+        elif self._region == "zbb": 
             # any Ak4 jets with
             # - pT > 30 GeV
             # - |eta| < 2.4 
@@ -1305,7 +1306,7 @@ class bbbbSkimmer(SkimmerABC):
             **bbFatJetVars,
             **trigObjFatJetVars,
             **vbfJetVars,
-        }
+            }
         else:
             skimmed_events = {
             **genVars,
@@ -1318,7 +1319,9 @@ class bbbbSkimmer(SkimmerABC):
             **bbFatJetVars,
             # **trigObjFatJetVars, # Not used in scouting
             # **vbfJetVars, # Not used in scouting
-        }
+            }
+            del DSTVars, L1vars, ak4JetAwayVars, ak8FatJetVars # Trying to be more memory-friendly
+
         
         if self._region == "zbb-Zto2Q-DYLL":
             # only need gen-level information for this region
@@ -1428,6 +1431,10 @@ class bbbbSkimmer(SkimmerABC):
 
                 # Combine pre and post 367621 results based on the mask
                 DST_triggered = ak.where(mask, DST_triggered_pre367621, DST_triggered_post367621)
+
+                del DST_list_post367621, DST_triggered_post367621
+                del DST_list_pre367621, DST_triggered_pre367621
+                del mask
             
             else:
                 DST_list  = [events.DST[trigger] for trigger in self.DSTs[year] if trigger in events.DST.fields] 
@@ -1659,11 +1666,13 @@ class bbbbSkimmer(SkimmerABC):
                     & (bbFatJetVars["bbFatJetMsd"][:, 0] >= 30) 
                 )
                 add_selection("ak8_ptmSD_lead", cut_pt_lead, *selection_args) # Includes a cut on leading pt as well
+                del cut_pt_lead
 
                 cut_txbb_lead = (
                     (bbFatJetVars["bbFatJetScoutParTTXbb"][:, 0] >= 0.1) 
                 )
                 add_selection("ak8_TXbb_lead", cut_txbb_lead, *selection_args)
+                del cut_txbb_lead
 
                 # FatJet1 with pT>200
                 cut_pt_subl = (
@@ -1673,6 +1682,7 @@ class bbbbSkimmer(SkimmerABC):
                     )
                 ) >= 2  # >=2 because we already have the lead fatjet
                 add_selection("ak8_pt_subl", cut_pt_subl, *selection_args)
+                del cut_pt_subl
 
                 # eta cut already done
 
@@ -1683,7 +1693,7 @@ class bbbbSkimmer(SkimmerABC):
                 zbb_ak8jets_dphi = np.abs(
                     del_phi(bbFatJetVars["bbFatJetPhi"][:, 0], bbFatJetVars["bbFatJetPhi"][:, 1])
                 )
-                # add_selection("ak8_back2back", zbb_ak8jets_dphi >= (np.pi / 2), *selection_args)
+                add_selection("ak8_back2back", zbb_ak8jets_dphi >= (np.pi / 2), *selection_args)
 
                 # >= 1 AK8 jet with ParT/PNet Xbb >= 0.1
                 # cut_txbb = (
@@ -1697,30 +1707,31 @@ class bbbbSkimmer(SkimmerABC):
 
                 # Consider replacing 0lep with "for leptons require DeltaR>0.8 from the Xbb-tagged AK8 jet. This way we avoid electrons or muons from b hadron decays, which is the main thing"
 
-                # 0 veto leptons
-                # TODO: Investigate quality of lepton veto. Concern: poor scouting electron reconstruction.
-                # zero_lep = (ak.sum(veto_muon_sel, axis=1) == 0) & (ak.sum(veto_electron_sel, axis=1) == 0)
-
-                # add_selection("0lep", zero_lep, *selection_args)
-
                 # First cut which we want to investigate on tt to2q & lnu
-                electrons = ak.Array(events.ScoutingElectron[veto_electron_sel]) # these are the loosest electrons, so we will use them here
-                muons = ak.Array(events.ScoutingMuonNoVtx[veto_muon_sel]) if hasattr(events, "ScoutingMuonNoVtx") else ak.Array(events.ScoutingMuon[veto_muon_sel])
+                # electrons = ak.Array(events.ScoutingElectron[veto_electron_sel]) # these are the loosest electrons, so we will use them here
+                # muons = ak.Array(events.ScoutingMuonNoVtx[veto_muon_sel]) if hasattr(events, "ScoutingMuonNoVtx") else ak.Array(events.ScoutingMuon[veto_muon_sel])
 
-                dphi_fj0_met = del_phi(bbFatJetVars["bbFatJetPhi"][:, 0], eventVars["MET_phi"])
-                dphi_fj0_mu = np.abs((muons.phi - bbFatJetVars["bbFatJetPhi"][:, 0][:, np.newaxis] + np.pi) % (2 * np.pi) - np.pi)
-                dphi_fj0_el = np.abs((electrons.phi - bbFatJetVars["bbFatJetPhi"][:, 0][:, np.newaxis] + np.pi) % (2 * np.pi) - np.pi)
+                # dphi_fj0_met = del_phi(bbFatJetVars["bbFatJetPhi"][:, 0], eventVars["MET_phi"])
+                # dphi_fj0_mu = np.abs((muons.phi - bbFatJetVars["bbFatJetPhi"][:, 0][:, np.newaxis] + np.pi) % (2 * np.pi) - np.pi)
+                # dphi_fj0_el = np.abs((electrons.phi - bbFatJetVars["bbFatJetPhi"][:, 0][:, np.newaxis] + np.pi) % (2 * np.pi) - np.pi)
 
-                met_opposite = dphi_fj0_met >= (np.pi/2)
-                mu_opposite = ak.any(dphi_fj0_mu >= (np.pi/2), axis=1)
-                el_opposite = ak.any(dphi_fj0_el >= (np.pi/2), axis=1)
+                # met_opposite = dphi_fj0_met >= (np.pi/2)
+                # mu_opposite = ak.any(dphi_fj0_mu >= (np.pi/2), axis=1)
+                # el_opposite = ak.any(dphi_fj0_el >= (np.pi/2), axis=1)
                 ak8_opposite = zbb_ak8jets_dphi >= (np.pi / 2)
 
-                lepton_opposite = mu_opposite | el_opposite
+                # lepton_opposite = mu_opposite | el_opposite
 
-                cut_TTto2QLnu = ~(lepton_opposite & met_opposite & ak8_opposite)
+                # cut_TTto2QLnu = ~(lepton_opposite & met_opposite & ak8_opposite) # Probably not necessary to require AK8 here
 
-                add_selection("cut_TTto2QLnu", cut_TTto2QLnu, *selection_args)
+                # add_selection("cut_TTto2QLnu", cut_TTto2QLnu, *selection_args)
+
+                # Should just veto on all leptons, or then generalize above AK8_opposite to also consider AK4 jets; 
+                # then could/should get rid of two AK8 jets requirement?
+
+                zero_lep = (ak.sum(veto_muon_sel, axis=1) == 0) & (ak.sum(veto_electron_sel, axis=1) == 0)
+                add_selection("0lep", zero_lep, *selection_args)
+                del zero_lep, zbb_ak8jets_dphi
 
                 dphi_fj0_subl = del_phi(bbFatJetVars["bbFatJetPhi"][:, 0], bbFatJetVars["bbFatJetPhi"][:, 1:]) # all subl fatjets
                 subl_opposite = dphi_fj0_subl >= (np.pi/2)
@@ -1737,6 +1748,7 @@ class bbbbSkimmer(SkimmerABC):
                 cut_tt4Q_veto = ~W_tagged_subl_opposite_fatjets
 
                 add_selection("cut_tt4Q_veto", cut_tt4Q_veto, *selection_args)
+                del dphi_fj0_subl, subl_opposite, w_tag, W_tagged_subl_opposite_fatjets, cut_tt4Q_veto
 
                 # eventVars["fj_0lep"] = {k: v[zero_lep] for k, v in bbFatJetVars.items()}
                 # eventVars["fj_TTto2QLnu"] = {k: v[cut_TTto2QLnu] for k, v in bbFatJetVars.items()}
