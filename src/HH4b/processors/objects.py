@@ -69,7 +69,6 @@ def jetid_v14(jets: ak.Array, use_scouting: bool = False) -> tuple[ak.Array, ak.
     else: 
         # Mildly modified recommendations for scouting https://indico.cern.ch/event/1487156/contributions/6391070/attachments/3024404/5342673/Scouting_JetID_DQM_06_03_2025.pdf,
         # largely because Neutral EM fraction cuts are changed from 0.99 to 0.9
-        print(jets.fields)
         jetidtight = (
             (
                 (np.abs(jets.eta) <= 2.6)
@@ -527,15 +526,17 @@ def get_ak8jets(fatjets: FatJetArray): # TODO: This is the goldmine for the vari
         # fatjets["scoutParTPTopbWqq"] = fatjets.globalParT3_TopbWqq
         # fatjets["scoutParTPTopbWtauhv"] = fatjets.globalParT3_TopbWtauhv
 
+        # Do not use the raw probabilities right now
         fatjets["ScoutParTPXbb"] = fatjets.scoutGlobalParT_prob_Xbb
-        fatjets["ScoutParTPXcc"] = fatjets.scoutGlobalParT_prob_Xcc
-        fatjets["ScoutParTPXcs"] = fatjets.scoutGlobalParT_prob_Xcs
-        fatjets["ScoutParTPXgg"] = fatjets.scoutGlobalParT_prob_Xgg
-        fatjets["ScoutParTPXqq"] = fatjets.scoutGlobalParT_prob_Xqq
+        # fatjets["ScoutParTPXcc"] = fatjets.scoutGlobalParT_prob_Xcc
+        # fatjets["ScoutParTPXcs"] = fatjets.scoutGlobalParT_prob_Xcs
+        # fatjets["ScoutParTPXgg"] = fatjets.scoutGlobalParT_prob_Xgg
+        # fatjets["ScoutParTPXqq"] = fatjets.scoutGlobalParT_prob_Xqq
 
-        fatjets["ScoutParTPXtauhtaue"] = fatjets.scoutGlobalParT_prob_Xtauhtaue
-        fatjets["ScoutParTPXtauhtauh"] = fatjets.scoutGlobalParT_prob_Xtauhtauh
-        fatjets["ScoutParTPXtauhtaum"] = fatjets.scoutGlobalParT_prob_Xtauhtaum
+        # Don't need these, don't store them
+        # fatjets["ScoutParTPXtauhtaue"] = fatjets.scoutGlobalParT_prob_Xtauhtaue
+        # fatjets["ScoutParTPXtauhtauh"] = fatjets.scoutGlobalParT_prob_Xtauhtauh
+        # fatjets["ScoutParTPXtauhtaum"] = fatjets.scoutGlobalParT_prob_Xtauhtaum
 
         fatjets["ScoutParTTXbb"] = (
             fatjets.scoutGlobalParT_prob_Xbb / (
@@ -543,28 +544,28 @@ def get_ak8jets(fatjets: FatJetArray): # TODO: This is the goldmine for the vari
             )
         )
 
-        fatjets["ScoutParTTXbc"] = (
-            fatjets.scoutGlobalParT_prob_Xbc / (
-                fatjets.scoutGlobalParT_prob_Xbc + fatjets.scoutGlobalParT_prob_QCD
-            )
-        )
+        # fatjets["ScoutParTTXbc"] = (
+        #     fatjets.scoutGlobalParT_prob_Xbc / (
+        #         fatjets.scoutGlobalParT_prob_Xbc + fatjets.scoutGlobalParT_prob_QCD
+        #     )
+        # )
 
-        fatjets["ScoutParTTXbs"] = (
-            fatjets.scoutGlobalParT_prob_Xbs / (
-                fatjets.scoutGlobalParT_prob_Xbs + fatjets.scoutGlobalParT_prob_QCD
-            )
-        )
+        # fatjets["ScoutParTTXbs"] = (
+        #     fatjets.scoutGlobalParT_prob_Xbs / (
+        #         fatjets.scoutGlobalParT_prob_Xbs + fatjets.scoutGlobalParT_prob_QCD
+        #     )
+        # )
 
-        fatjets["ScoutParTTXcs"] = (
-            fatjets.scoutGlobalParT_prob_Xcs / (
-                fatjets.scoutGlobalParT_prob_Xcs + fatjets.scoutGlobalParT_prob_QCD
-            )
-        )
+        # fatjets["ScoutParTTXcs"] = (
+        #     fatjets.scoutGlobalParT_prob_Xcs / (
+        #         fatjets.scoutGlobalParT_prob_Xcs + fatjets.scoutGlobalParT_prob_QCD
+        #     )
+        # )
 
 
         # Correction factors because Patin requested to see them - 24/07/2025
-        fatjets["ScoutParTmassCorrFactorX2p"] = fatjets.scoutGlobalParT_massCorrGenericX2p 
-        fatjets["ScoutParTmassCorrFactorW2p"] = fatjets.scoutGlobalParT_massCorrGenericW2p
+        # fatjets["ScoutParTmassCorrFactorX2p"] = fatjets.scoutGlobalParT_massCorrGenericX2p 
+        # fatjets["ScoutParTmassCorrFactorW2p"] = fatjets.scoutGlobalParT_massCorrGenericW2p
 
         # Regression masses + corrected regression masses
         fatjets["ScoutParTmassGeneric"] = (

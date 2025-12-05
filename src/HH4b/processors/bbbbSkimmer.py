@@ -720,18 +720,15 @@ class bbbbSkimmer(SkimmerABC):
             ] if not self.use_scouting else [
             "ScoutParTPQCD",
             "ScoutParTPXbb",
-            "ScoutParTPXcc",
-            "ScoutParTPXcs",
-            "ScoutParTPXqq",
             "ScoutParTTXbb",
-            "ScoutParTTXcs",
-            "ScoutParTTXbs",
-            "ScoutParTTXbc",
+            # "ScoutParTTXcs", 
+            # "ScoutParTTXbs",
+            # "ScoutParTTXbc",
             "ScoutParTmassGeneric",
             "ScoutParTmassCorrectedX2p",
             "ScoutParTmassCorrectedW2p",
-            "ScoutParTmassCorrFactorX2p",
-            "ScoutParTmassCorrFactorW2p",
+            # "ScoutParTmassCorrFactorX2p",
+            # "ScoutParTmassCorrFactorW2p",
             ]
 
             if self.use_scouting:
@@ -1718,7 +1715,7 @@ class bbbbSkimmer(SkimmerABC):
                 # met_opposite = dphi_fj0_met >= (np.pi/2)
                 # mu_opposite = ak.any(dphi_fj0_mu >= (np.pi/2), axis=1)
                 # el_opposite = ak.any(dphi_fj0_el >= (np.pi/2), axis=1)
-                ak8_opposite = zbb_ak8jets_dphi >= (np.pi / 2)
+                # ak8_opposite = zbb_ak8jets_dphi >= (np.pi / 2)
 
                 # lepton_opposite = mu_opposite | el_opposite
 
@@ -1731,24 +1728,24 @@ class bbbbSkimmer(SkimmerABC):
 
                 zero_lep = (ak.sum(veto_muon_sel, axis=1) == 0) & (ak.sum(veto_electron_sel, axis=1) == 0)
                 add_selection("0lep", zero_lep, *selection_args)
-                del zero_lep, zbb_ak8jets_dphi
+                # del zero_lep, zbb_ak8jets_dphi
 
-                dphi_fj0_subl = del_phi(bbFatJetVars["bbFatJetPhi"][:, 0], bbFatJetVars["bbFatJetPhi"][:, 1:]) # all subl fatjets
-                subl_opposite = dphi_fj0_subl >= (np.pi/2)
+                # dphi_fj0_subl = del_phi(bbFatJetVars["bbFatJetPhi"][:, 0], bbFatJetVars["bbFatJetPhi"][:, 1:]) # all subl fatjets
+                # subl_opposite = dphi_fj0_subl >= (np.pi/2)
 
-                # Second cut on tt to 4q
-                w_tag = (
-                    (bbFatJetVars["bbFatJetScoutParTTXcs"][:, 1:] >= 0.1)
-                    | (bbFatJetVars["bbFatJetScoutParTTXbs"][:, 1:] >= 0.1)
-                    | (bbFatJetVars["bbFatJetScoutParTTXbc"][:, 1:] >= 0.1)
-                )
+                # # Second cut on tt to 4q
+                # w_tag = (
+                #     (bbFatJetVars["bbFatJetScoutParTTXcs"][:, 1:] >= 0.1)
+                #     | (bbFatJetVars["bbFatJetScoutParTTXbs"][:, 1:] >= 0.1)
+                #     | (bbFatJetVars["bbFatJetScoutParTTXbc"][:, 1:] >= 0.1)
+                # )
 
-                W_tagged_subl_opposite_fatjets = ak.any(ak8_opposite & w_tag, axis=1)
+                # W_tagged_subl_opposite_fatjets = ak.any(ak8_opposite & w_tag, axis=1)
 
-                cut_tt4Q_veto = ~W_tagged_subl_opposite_fatjets
+                # cut_tt4Q_veto = ~W_tagged_subl_opposite_fatjets
 
-                add_selection("cut_tt4Q_veto", cut_tt4Q_veto, *selection_args)
-                del dphi_fj0_subl, subl_opposite, w_tag, W_tagged_subl_opposite_fatjets, cut_tt4Q_veto
+                # add_selection("cut_tt4Q_veto", cut_tt4Q_veto, *selection_args)
+                # del dphi_fj0_subl, subl_opposite, w_tag, W_tagged_subl_opposite_fatjets, cut_tt4Q_veto
 
                 # eventVars["fj_0lep"] = {k: v[zero_lep] for k, v in bbFatJetVars.items()}
                 # eventVars["fj_TTto2QLnu"] = {k: v[cut_TTto2QLnu] for k, v in bbFatJetVars.items()}
