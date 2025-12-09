@@ -1304,7 +1304,8 @@ class bbbbSkimmer(SkimmerABC):
             **trigObjFatJetVars,
             **vbfJetVars,
             }
-        else:
+        
+        if self._region == "zbb" and self.use_scouting:
             skimmed_events = {
             **genVars,
             **eventVars,
@@ -1660,9 +1661,9 @@ class bbbbSkimmer(SkimmerABC):
 
                 cut_pt_lead = (
                     (bbFatJetVars["bbFatJetPt"][:, 0] >= 300) # Delta R(bb) = 2m_H / p_T, so p_T ~ 312.5 would be boosted regime
-                    & (bbFatJetVars["bbFatJetMsd"][:, 0] >= 30) 
+                    #& (bbFatJetVars["bbFatJetMsd"][:, 0] >= 30) 
                 )
-                add_selection("ak8_ptmSD_lead", cut_pt_lead, *selection_args) # Includes a cut on leading pt as well
+                add_selection("ak8_ptmSD_lead", cut_pt_lead, *selection_args) # Includes a cut on leading pt as well; took away msd cut
                 del cut_pt_lead
 
                 cut_txbb_lead = (
@@ -1726,8 +1727,7 @@ class bbbbSkimmer(SkimmerABC):
                 # Should just veto on all leptons, or then generalize above AK8_opposite to also consider AK4 jets; 
                 # then could/should get rid of two AK8 jets requirement?
 
-                zero_lep = (ak.sum(veto_muon_sel, axis=1) == 0) & (ak.sum(veto_electron_sel, axis=1) == 0)
-                add_selection("0lep", zero_lep, *selection_args)
+                # add_selection("0lep", zero_lep, *selection_args)
                 # del zero_lep, zbb_ak8jets_dphi
 
                 # dphi_fj0_subl = del_phi(bbFatJetVars["bbFatJetPhi"][:, 0], bbFatJetVars["bbFatJetPhi"][:, 1:]) # all subl fatjets
@@ -1845,6 +1845,12 @@ class bbbbSkimmer(SkimmerABC):
         ##############################
         # Reshape and apply selections
         ##############################
+
+        # 0lep test cut
+        skimmed_events["lepveto"] = ak.to_numpy((
+            (ak.sum(veto_muon_sel, axis=1) == 0) &
+            (ak.sum(veto_electron_sel, axis=1) == 0)
+        ))
 
         sel_all = selection.all(*selection.names)
         skimmed_events = {
