@@ -526,7 +526,7 @@ class bbbbSkimmer(SkimmerABC):
 
         # TODO: is this only needed for BDT? 
         # JMSR
-        self.jmsr_vars = ["msoftdrop", "particleNet_mass"] # if not self.use_scouting else ["msoftdrop"] # Why are we using particleNet_mass here? Can I just take it away?
+        self.jmsr_vars = ["msoftdrop", "particleNet_mass"] if not self.use_scouting else ["msoftdrop"] # Particle Net not useful in scouting
         if self._nano_version == "v12v2_private":
             self.jmsr_vars += ["particleNet_mass_legacy", "ParTmassVis"]
         if self._nano_version == "v12_private":
@@ -545,13 +545,12 @@ class bbbbSkimmer(SkimmerABC):
         #         "ParT3massGeneric",
         #         "ParT3massCorrX2p",
         #     ]
-        if self._nano_version == "v15_scouting": # TODO: What variables to put here? @Patin @Santeri
+        if self._nano_version == "v15_scouting":
             if self.use_scouting:
                 self.jmsr_vars += [
                     "ScoutParTmassGeneric",
                     "ScoutParTmassCorrectedX2p", 
                 ]
-                # pass
             else:
                 self.jmsr_vars += [
                     "ParT3massGeneric",
@@ -572,9 +571,9 @@ class bbbbSkimmer(SkimmerABC):
             self.jms_values[jmsr_year] = dict.fromkeys(self.jmsr_vars)
             # default no scaling/smearing
             for jmsr_var in self.jmsr_vars:
-                self.jmr_values[jmsr_year][jmsr_var] = [1, 1, 1] # Energies corrected but not masses or the standard ones?
+                self.jmr_values[jmsr_year][jmsr_var] = [1, 1, 1] 
                 self.jms_values[jmsr_year][jmsr_var] = [1, 1, 1]
-            # update values for ParTmassVis # TODO What are these??? Scouting significance?
+            # update values for ParTmassVis
             self.jmr_values[jmsr_year]["ParTmassVis"] = [
                 jmr_val["nom"],
                 jmr_val["down"],
@@ -596,7 +595,7 @@ class bbbbSkimmer(SkimmerABC):
                     jms_val["down"],
                     jms_val["up"],
                 ]
-            if self._nano_version == "v15_scouting": # Are the bbFatJetParTmassVis values valid for scouting??
+            if self._nano_version == "v15_scouting": 
                 if self.use_scouting:
                     self.jmr_values[jmsr_year]["ScoutParTmassGeneric"] = [
                         jmr_val["nom"],
@@ -607,6 +606,17 @@ class bbbbSkimmer(SkimmerABC):
                         jmr_val["nom"],
                         jmr_val["down"],
                         jmr_val["up"],
+                    ]
+
+                    self.jms_values[jmsr_year]["ScoutParTmassGeneric"] = [
+                        jms_val["nom"],
+                        jms_val["down"],
+                        jms_val["up"],
+                    ]
+                    self.jms_values[jmsr_year]["ScoutParTmassCorrectedX2p"] = [
+                        jms_val["nom"],
+                        jms_val["down"],
+                        jms_val["up"],
                     ]
                 else: # haven't tested
                     self.jmr_values[jmsr_year]["ParT3massGeneric"] = [
@@ -620,7 +630,18 @@ class bbbbSkimmer(SkimmerABC):
                         jmr_val["up"],
                     ]
 
+                    self.jmr_values[jmsr_year]["ParT3massGeneric"] = [
+                        jms_val["nom"],
+                        jms_val["down"],
+                        jms_val["up"],
+                    ]
+                    self.jmr_values[jmsr_year]["ParT3massCorrectedX2p"] = [
+                        jms_val["nom"],
+                        jms_val["down"],
+                        jms_val["up"],
+                    ]
 
+        
         # FatJet Vars
         if (
             self._nano_version == "v12_private"
