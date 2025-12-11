@@ -787,7 +787,7 @@ class bbbbSkimmer(SkimmerABC):
         isData = not hasattr(events, "genWeight")
 
         # datasets for saving jec variations
-        isJECs = (
+        isJECs = ( # Wasteful for QCD?
             "HHto4B" in dataset
             or "TT" in dataset
             or "Wto2Q" in dataset
@@ -1687,11 +1687,11 @@ class bbbbSkimmer(SkimmerABC):
                 add_selection("ak8_ptmSD_lead", cut_pt_lead, *selection_args) # Includes a cut on leading pt as well; took away msd cut
                 del cut_pt_lead
 
-                cut_txbb_lead = (
-                    (bbFatJetVars["bbFatJetScoutParTTXbb"][:, 0] >= 0.1) 
-                )
-                add_selection("ak8_TXbb_lead", cut_txbb_lead, *selection_args)
-                del cut_txbb_lead
+                #cut_txbb_lead = (
+                #    (bbFatJetVars["bbFatJetScoutParTTXbb"][:, 0] >= 0.1) 
+                #)
+                #add_selection("ak8_TXbb_lead", cut_txbb_lead, *selection_args)
+                #del cut_txbb_lead
 
                 # FatJet1 with pT>200
                 cut_pt_subl = (
