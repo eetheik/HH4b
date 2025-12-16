@@ -18,6 +18,7 @@ import vector
 import xgboost as xgb
 from coffea import processor
 from coffea.analysis_tools import PackedSelection, Weights
+from coffea.lumi_tools import LumiMask
 
 import HH4b
 
@@ -1479,6 +1480,21 @@ class bbbbSkimmer(SkimmerABC):
         else:
             apply_met_filters = False # Drop MET filters for scouting, can't do them
 
+        if isData:
+            if "2023" in year:
+                golde_json_path = "/eos/user/c/cmsdqm/www/CAF/certification/Collisions23/Cert_Collisions2023_366442_370790_Golden.json"
+            if "2024" in year:
+                golden_json_path = "/eos/user/c/cmsdqm/www/CAF/certification/Collisions24/Cert_Collisions2024_378981_386951_Golden.json"
+            else:
+                print("Golden JSON not applied")
+                pass
+
+            lumimask = LumiMask(golden_json_path)
+
+            good = lumimask(events.run, events.luminosityBlock)
+
+            events = events[good]
+
         if self._region == "zbb-Zto2Q-DYLL":
             # in Zbb-Zto2Q-DYLL region we do not apply any met filters
             apply_met_filters = False
@@ -2094,3 +2110,4 @@ class bbbbSkimmer(SkimmerABC):
             )
 
         return bdtVars
+    
