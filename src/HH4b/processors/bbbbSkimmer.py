@@ -1482,9 +1482,9 @@ class bbbbSkimmer(SkimmerABC):
 
         if isData:
             if "2023" in year:
-                golde_json_path = "root://eosuser.cern.ch//eos/user/c/cmsdqm/www/CAF/certification/Collisions23/Cert_Collisions2023_366442_370790_Golden.json"
-            if "2024" in year:
-                golden_json_path = "root://eosuser.cern.ch//eos/user/c/cmsdqm/www/CAF/certification/Collisions24/Cert_Collisions2024_378981_386951_Golden.json"
+                golden_json_path = str(pathlib.Path(__file__).parent.parent.resolve()) + "/corrections/Cert_Collisions2023_366442_370790_Golden.json"
+            elif "2024" in year:
+                golden_json_path = str(pathlib.Path(__file__).parent.parent.resolve()) + "/corrections/Cert_Collisions2024_378981_386951_Golden.json"
             else:
                 print("Golden JSON not applied")
                 pass
