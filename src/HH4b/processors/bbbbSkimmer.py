@@ -726,15 +726,15 @@ class bbbbSkimmer(SkimmerABC):
             # also have GloParT-v3 available for scouting MC offline reconstruction
             extra_vars = [ 
             "ParT3PQCD",
-            "ParT3PTopbWev",
-            "ParT3PTopbWmv",
-            "ParT3PTopbWq",
-            "ParT3PTopbWqq",
-            "ParT3PTopbWtauhv",
+            # "ParT3PTopbWev",
+            # "ParT3PTopbWmv",
+            # "ParT3PTopbWq",
+            # "ParT3PTopbWqq",
+            # "ParT3PTopbWtauhv",
             "ParT3PXbb",
-            "ParT3PXcc",
-            "ParT3PXcs",
-            "ParT3PXqq",
+            # "ParT3PXcc",
+            # "ParT3PXcs",
+            # "ParT3PXqq",
             "ParT3TXbb",
             "ParT3massGeneric", 
             "ParT3massCorrectedX2p",
@@ -1476,7 +1476,8 @@ class bbbbSkimmer(SkimmerABC):
             for mf in self.met_filters:
                 if mf in events.Flag.fields:
                     cut_metfilters = cut_metfilters & events.Flag[mf]
-            apply_met_filters = True
+            # apply_met_filters = True
+            apply_met_filters = False # Temporarily drop MET filters for offline (scouting comparison)
         else:
             apply_met_filters = False # Drop MET filters for scouting, can't do them
 
@@ -1611,24 +1612,46 @@ class bbbbSkimmer(SkimmerABC):
                 # >=2 AK8 jets
                 add_selection("num_ak8jets", eventVars["nFatJets"] >= 2, *selection_args)
 
-                # FatJet0 with pT>250, mSD>40
                 cut_pt_lead = (
-                    np.sum(
-                        (bbFatJetVars["bbFatJetPt"][:, :2] >= 300)
-                        & (bbFatJetVars["bbFatJetMsd"][:, :2] >= 20), 
-                        axis=1,
-                    )
-                ) >= 1
-                add_selection("ak8_ptmSD_lead", cut_pt_lead, *selection_args)
+                    (bbFatJetVars["bbFatJetPt"][:, 0] >= 300) # Delta R(bb) = 2m_H / p_T, so p_T ~ 312.5 would be boosted regime
+                )
+                add_selection("ak8_pt_lead", cut_pt_lead, *selection_args)
+                del cut_pt_lead
+
+                cut_txbb_lead = (
+                    (bbFatJetVars["bbFatJetParT3TXbb"][:, 0] >= 0.1) 
+                )
+                add_selection("ak8_TXbb_lead", cut_txbb_lead, *selection_args)
+                del cut_txbb_lead
 
                 # FatJet1 with pT>200
                 cut_pt_subl = (
                     np.sum(
-                        bbFatJetVars["bbFatJetPt"][:, :2] >= 200,
+                        bbFatJetVars["bbFatJetPt"][:, :2] >= 200, 
                         axis=1,
                     )
                 ) >= 2  # >=2 because we already have the lead fatjet
                 add_selection("ak8_pt_subl", cut_pt_subl, *selection_args)
+                del cut_pt_subl
+
+                # FatJet0 with pT>250, mSD>40
+                # cut_pt_lead = (
+                #     np.sum(
+                #         (bbFatJetVars["bbFatJetPt"][:, :2] >= 300)
+                #         & (bbFatJetVars["bbFatJetMsd"][:, :2] >= 20), 
+                #         axis=1,
+                #     )
+                # ) >= 1
+                # add_selection("ak8_ptmSD_lead", cut_pt_lead, *selection_args)
+
+                # # FatJet1 with pT>200
+                # cut_pt_subl = (
+                #     np.sum(
+                #         bbFatJetVars["bbFatJetPt"][:, :2] >= 200,
+                #         axis=1,
+                #     )
+                # ) >= 2  # >=2 because we already have the lead fatjet
+                # add_selection("ak8_pt_subl", cut_pt_subl, *selection_args)
                 # eta cut already done
 
                 def del_phi(phi1, phi2):
@@ -1641,35 +1664,36 @@ class bbbbSkimmer(SkimmerABC):
                 add_selection("ak8_back2back", zbb_ak8jets_dphi >= (np.pi / 2), *selection_args)
 
                 # >= 1 AK8 jet with ParT/PNet Xbb >= 0.1
-                if self._nano_version.startswith("v14"):
-                    # ParT2 and ParT3 in v14
-                    cut_txbb = (
-                        (np.sum(bbFatJetVars["bbFatJetParT2TXbb"][:, :2] >= 0.1, axis=1) >= 1)
-                        | (np.sum(bbFatJetVars["bbFatJetParT3TXbb"][:, :2] >= 0.1, axis=1) >= 1)
-                        | (np.sum(bbFatJetVars["bbFatJetPNetTXbbLegacy"][:, :2] >= 0.1, axis=1) >= 1)
-                    )
-                elif self._nano_version.startswith("v15"): # This does not work in scouting since ParT3TXbb is not present there, rather ScoutGloParTTXbb
-                    # ParT3 in v15
-                    cut_txbb = (
-                        (np.sum(bbFatJetVars["bbFatJetParT3TXbb"][:, :2] >= 0.1, axis=1) >= 1)
-                        # | (np.sum(bbFatJetVars["bbFatJetPNetTXbbLegacy"][:, :2] >= 0.1, axis=1) >= 1) # TODO: Ask Patin if this is needed
-                    )
-                else:
-                    cut_txbb = (np.sum(bbFatJetVars["bbFatJetParTTXbb"][:, :2] >= 0.1, axis=1) >= 1) | (
-                        np.sum(bbFatJetVars["bbFatJetPNetTXbbLegacy"][:, :2] >= 0.1, axis=1) >= 1
-                    )
-                add_selection("ak8bb_txbb", cut_txbb, *selection_args)
+                # if self._nano_version.startswith("v14"):
+                #     # ParT2 and ParT3 in v14
+                #     cut_txbb = (
+                #         (np.sum(bbFatJetVars["bbFatJetParT2TXbb"][:, :2] >= 0.1, axis=1) >= 1)
+                #         | (np.sum(bbFatJetVars["bbFatJetParT3TXbb"][:, :2] >= 0.1, axis=1) >= 1)
+                #         | (np.sum(bbFatJetVars["bbFatJetPNetTXbbLegacy"][:, :2] >= 0.1, axis=1) >= 1)
+                #     )
+                # elif self._nano_version.startswith("v15"):
+                #     # ParT3 in v15
+                #     cut_txbb = (
+                #         (np.sum(bbFatJetVars["bbFatJetParT3TXbb"][:, :2] >= 0.1, axis=1) >= 1)
+                #         # | (np.sum(bbFatJetVars["bbFatJetPNetTXbbLegacy"][:, :2] >= 0.1, axis=1) >= 1) 
+                #     )
+                # else:
+                #     cut_txbb = (np.sum(bbFatJetVars["bbFatJetParTTXbb"][:, :2] >= 0.1, axis=1) >= 1) | (
+                #         np.sum(bbFatJetVars["bbFatJetPNetTXbbLegacy"][:, :2] >= 0.1, axis=1) >= 1
+                #     )
+                # add_selection("ak8bb_txbb", cut_txbb, *selection_args)
 
                 # HT > 1000
-                add_selection("ht1000", eventVars["ht"] >= 1000, *selection_args)
+                add_selection("ht1000", eventVars["ht"] >= 1000, *selection_args) # This might have to remain at 1000 given offline triggers
 
+                # Removed 0lep veto from offline since it is not included in scouting (for comparison)
                 # 0 veto leptons
                 # TODO: check if this is correct
-                add_selection(
-                    "0lep",
-                    (ak.sum(veto_muon_sel, axis=1) == 0) & (ak.sum(veto_electron_sel, axis=1) == 0),
-                    *selection_args,
-                )
+                # add_selection(
+                #     "0lep",
+                #     (ak.sum(veto_muon_sel, axis=1) == 0) & (ak.sum(veto_electron_sel, axis=1) == 0),
+                #     *selection_args,
+                # )
 
                # top veto: no medium b-tagged AK4 jets with pT>30, |eta|<2.4, and dR(ak4, bbFatJet0) > 0.8
                 medium_btag_th_dict = {
@@ -1678,15 +1702,17 @@ class bbbbSkimmer(SkimmerABC):
                     "2023": 0.2431,
                     "2023BPix": 0.2435,
                 }
+
+                # Temporarily removing offline top_veto so that scouting and offline cutflow are the same
                 # no medium b-tagged AK4 jets with pT>30, |eta|<2.4, and dR(ak4, bbFatJet0) > 0.8
-                cut_top_veto = (
-                    ak.sum(
-                        ak4_jets_awayfromak8.btagDeepFlavB >= medium_btag_th_dict[year],
-                        axis=1,
-                    )
-                    == 0
-                )
-                add_selection("top_veto", cut_top_veto, *selection_args)
+                # cut_top_veto = (
+                #     ak.sum(
+                #         ak4_jets_awayfromak8.btagDeepFlavB >= medium_btag_th_dict[year],
+                #         axis=1,
+                #     )
+                #     == 0
+                # )
+                # add_selection("top_veto", cut_top_veto, *selection_args)
 
             else: # use scouting variables
 
@@ -1700,11 +1726,11 @@ class bbbbSkimmer(SkimmerABC):
                     (bbFatJetVars["bbFatJetPt"][:, 0] >= 300) # Delta R(bb) = 2m_H / p_T, so p_T ~ 312.5 would be boosted regime
                     #& (bbFatJetVars["bbFatJetMsd"][:, 0] >= 30) 
                 )
-                add_selection("ak8_ptmSD_lead", cut_pt_lead, *selection_args) # Includes a cut on leading pt as well; took away msd cut
+                add_selection("ak8_pt_lead", cut_pt_lead, *selection_args) # Includes a cut on leading pt as well; took away msd cut
                 del cut_pt_lead
 
                 cut_txbb_lead = (
-                    (bbFatJetVars["bbFatJetScoutParTTXbb"][:, 0] >= 0.3) 
+                    (bbFatJetVars["bbFatJetScoutParTTXbb"][:, 0] >= 0.1) 
                 )
                 add_selection("ak8_TXbb_lead", cut_txbb_lead, *selection_args)
                 del cut_txbb_lead
@@ -1738,7 +1764,7 @@ class bbbbSkimmer(SkimmerABC):
                 # add_selection("ak8bb_txbb", cut_txbb, *selection_args)
 
                 # HT > 600 (Fully efficient region for scouting HT trigger)
-                add_selection("ht600", eventVars["ht"] >= 600, *selection_args) 
+                add_selection("ht600", eventVars["ht"] >= 1000, *selection_args) # Changed from 600 to 1000 for scouting-offline comparison
 
                 # Consider replacing 0lep with "for leptons require DeltaR>0.8 from the Xbb-tagged AK8 jet. This way we avoid electrons or muons from b hadron decays, which is the main thing"
 
