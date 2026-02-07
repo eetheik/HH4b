@@ -1657,7 +1657,7 @@ class bbbbSkimmer(SkimmerABC):
                 def del_phi(phi1, phi2):
                     return np.abs((phi1 - phi2 + np.pi) % (2 * np.pi) - np.pi)
 
-                back-to-back AK8 jets
+                # back-to-back AK8 jets
                 zbb_ak8jets_dphi = np.abs(
                     del_phi(bbFatJetVars["bbFatJetPhi"][:, 0], bbFatJetVars["bbFatJetPhi"][:, 1])
                 )
