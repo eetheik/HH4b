@@ -567,6 +567,9 @@ class bbbbSkimmer(SkimmerABC):
             if self.use_scouting and self._nano_version == "v15_scouting":
                 jmr_val = {"nom": 1.0, "down": 0.9, "up": 1.1}
                 jms_val = {"nom": 1.0, "down": 0.9, "up": 1.1}
+            if not self.use_scouting and self._nano_version == "v15_scouting": # scouting MC with offline data
+                jmr_val = {"nom": 1.0, "down": 0.9, "up": 1.1} # just apply same ones for now
+                jms_val = {"nom": 1.0, "down": 0.9, "up": 1.1}
 
             self.jmr_values[jmsr_year] = dict.fromkeys(self.jmsr_vars)
             self.jms_values[jmsr_year] = dict.fromkeys(self.jmsr_vars)
@@ -619,7 +622,7 @@ class bbbbSkimmer(SkimmerABC):
                         jms_val["down"],
                         jms_val["up"],
                     ]
-                else: # haven't tested
+                else: # TODO: Test!
                     self.jmr_values[jmsr_year]["ParT3massGeneric"] = [
                         jmr_val["nom"],
                         jmr_val["down"],
@@ -1476,8 +1479,8 @@ class bbbbSkimmer(SkimmerABC):
             for mf in self.met_filters:
                 if mf in events.Flag.fields:
                     cut_metfilters = cut_metfilters & events.Flag[mf]
-            # apply_met_filters = True
-            apply_met_filters = False # Temporarily drop MET filters for offline (scouting comparison)
+            apply_met_filters = True
+            # apply_met_filters = False # Temporarily drop MET filters for offline (scouting comparison)
         else:
             apply_met_filters = False # Drop MET filters for scouting, can't do them
 
@@ -1689,11 +1692,11 @@ class bbbbSkimmer(SkimmerABC):
                 # Removed 0lep veto from offline since it is not included in scouting (for comparison)
                 # 0 veto leptons
                 # TODO: check if this is correct
-                # add_selection(
-                #     "0lep",
-                #     (ak.sum(veto_muon_sel, axis=1) == 0) & (ak.sum(veto_electron_sel, axis=1) == 0),
-                #     *selection_args,
-                # )
+                add_selection(
+                    "0lep",
+                    (ak.sum(veto_muon_sel, axis=1) == 0) & (ak.sum(veto_electron_sel, axis=1) == 0),
+                    *selection_args,
+                )
 
                # top veto: no medium b-tagged AK4 jets with pT>30, |eta|<2.4, and dR(ak4, bbFatJet0) > 0.8
                 medium_btag_th_dict = {
@@ -1705,14 +1708,14 @@ class bbbbSkimmer(SkimmerABC):
 
                 # Temporarily removing offline top_veto so that scouting and offline cutflow are the same
                 # no medium b-tagged AK4 jets with pT>30, |eta|<2.4, and dR(ak4, bbFatJet0) > 0.8
-                # cut_top_veto = (
-                #     ak.sum(
-                #         ak4_jets_awayfromak8.btagDeepFlavB >= medium_btag_th_dict[year],
-                #         axis=1,
-                #     )
-                #     == 0
-                # )
-                # add_selection("top_veto", cut_top_veto, *selection_args)
+                cut_top_veto = (
+                    ak.sum(
+                        ak4_jets_awayfromak8.btagDeepFlavB >= medium_btag_th_dict[year],
+                        axis=1,
+                    )
+                    == 0
+                )
+                add_selection("top_veto", cut_top_veto, *selection_args)
 
             else: # use scouting variables
 
@@ -1720,7 +1723,6 @@ class bbbbSkimmer(SkimmerABC):
 
                 # >=2 AK8 jets
                 add_selection("num_ak8jets", eventVars["nFatJets"] >= 2, *selection_args)
-                # FatJet0 with pT>300, mSD>30
 
                 cut_pt_lead = ( # Comparing to Zichun's work with pT cut on 450 GeV
                     (bbFatJetVars["bbFatJetPt"][:, 0] >= 300) # Delta R(bb) = 2m_H / p_T, so p_T ~ 312.5 would be boosted regime
