@@ -165,7 +165,6 @@ class bbbbSkimmer(SkimmerABC):
         "pnet-v12": 0.3,
         "glopart-v2": 0.3,
         "glopart-v3": 0.3, 
-        "glopart-scouting": 0.3 # TODO: What should this be?, doesn't matter, this is only for signal region and not getting called at all rn - 30/07/2025 Eetu
     }
 
     fatjet_selection = {  # noqa: RUF012
@@ -185,7 +184,7 @@ class bbbbSkimmer(SkimmerABC):
     zbb_fatjet_scouting_selection = {  
         "pt": 200, # lower pt bound to 150 for scouting fatjet
         "eta": 2.4, # Changed to 2.2 from 2.4, source Patin
-        "msd": 30,
+        "msd": 0,
         "mreg": 0,
     }
 
@@ -527,7 +526,7 @@ class bbbbSkimmer(SkimmerABC):
 
         # TODO: is this only needed for BDT? 
         # JMSR
-        self.jmsr_vars = ["msoftdrop", "particleNet_mass"] if not self.use_scouting else ["msoftdrop"] # Particle Net not useful in scouting
+        self.jmsr_vars = ["msoftdrop", "particleNet_mass"] if not self.use_scouting else ["msoftdrop"] 
         if self._nano_version == "v12v2_private":
             self.jmsr_vars += ["particleNet_mass_legacy", "ParTmassVis"]
         if self._nano_version == "v12_private":
@@ -964,7 +963,7 @@ class bbbbSkimmer(SkimmerABC):
                 fatjets, **self.fatjet_selection, nano_version=self._nano_version, use_scouting=self.use_scouting
             )
 
-        if self._region in ("zbb-DYLL-data", "zbb-Zto2Q-DYLL"): # TODO: These corrections in scouting? Can be derived from non-scouting data, just xsec corrections? A: Yes -Patin
+        if self._region in ("zbb-DYLL-data", "zbb-Zto2Q-DYLL"):
             # no need for fatjets
             fatjets_xbb = fatjets
         else:
