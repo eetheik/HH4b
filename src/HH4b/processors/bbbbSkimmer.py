@@ -1718,48 +1718,51 @@ class bbbbSkimmer(SkimmerABC):
 
             else: # use scouting variables
 
-                # TODO: Consider a MET cut in scouting.
-
-                # >=2 AK8 jets
-                add_selection("num_ak8jets", eventVars["nFatJets"] >= 2, *selection_args)
-
-                cut_pt_lead = ( # Comparing to Zichun's work with pT cut on 450 GeV
-                    (bbFatJetVars["bbFatJetPt"][:, 0] >= 300) # Delta R(bb) = 2m_H / p_T, so p_T ~ 312.5 would be boosted regime
-                    #& (bbFatJetVars["bbFatJetMsd"][:, 0] >= 30) 
-                )
-                add_selection("ak8_pt_lead", cut_pt_lead, *selection_args) # Includes a cut on leading pt as well; took away msd cut
-                del cut_pt_lead
-
-                cut_txbb_lead = (
-                    (bbFatJetVars["bbFatJetScoutParTTXbb"][:, 0] >= 0.3) 
-                )
-                add_selection("ak8_TXbb_lead", cut_txbb_lead, *selection_args)
-                del cut_txbb_lead
-
-                # FatJet1 with pT>200
-                cut_pt_subl = (
-                    np.sum(
-                        bbFatJetVars["bbFatJetPt"][:, :2] >= 200, 
-                        axis=1,
+                if "QCD" in dataset: # Currently just want to minimally process QCD
+                    cut_pt_lead = (
+                        (bbFatJetVars["bbFatJetPt"][:, 0] >= 300) 
                     )
-                ) >= 2  # >=2 because we already have the lead fatjet
-                add_selection("ak8_pt_subl", cut_pt_subl, *selection_args)
-                del cut_pt_subl
+                    add_selection("ak8_pt_lead", cut_pt_lead, *selection_args) 
+                    del cut_pt_lead
 
-                # eta cut already done
+                    add_selection("ht600", eventVars["ht"] >= 600, *selection_args)
+                else:
+                    # >=2 AK8 jets
+                    add_selection("num_ak8jets", eventVars["nFatJets"] >= 2, *selection_args)
 
-                def del_phi(phi1, phi2):
-                    return np.abs((phi1 - phi2 + np.pi) % (2 * np.pi) - np.pi)
+                    cut_pt_lead = (
+                        (bbFatJetVars["bbFatJetPt"][:, 0] >= 300) # Delta R(bb) = 2m_H / p_T, so p_T ~ 312.5 would be boosted regime
+                    )
+                    add_selection("ak8_pt_lead", cut_pt_lead, *selection_args)
+                    del cut_pt_lead
 
-                # back-to-back AK8 jets
-                zbb_ak8jets_dphi = np.abs(
-                    del_phi(bbFatJetVars["bbFatJetPhi"][:, 0], bbFatJetVars["bbFatJetPhi"][:, 1])
-                )
-                add_selection("ak8_back2back", zbb_ak8jets_dphi >= (np.pi / 2), *selection_args)
+                    cut_txbb_lead = (
+                        (bbFatJetVars["bbFatJetScoutParTTXbb"][:, 0] >= 0.3) 
+                    )
+                    add_selection("ak8_TXbb_lead", cut_txbb_lead, *selection_args)
+                    del cut_txbb_lead
 
+                    # FatJet1 with pT>200
+                    cut_pt_subl = (
+                        np.sum(
+                            bbFatJetVars["bbFatJetPt"][:, :2] >= 200, 
+                            axis=1,
+                        )
+                    ) >= 2  # >=2 because we already have the lead fatjet
+                    add_selection("ak8_pt_subl", cut_pt_subl, *selection_args)
+                    del cut_pt_subl
 
-                # HT > 600 (Fully efficient region for scouting HT trigger)
-                add_selection("ht600", eventVars["ht"] >= 600, *selection_args) # Changed from 600 to 1000 for scouting-offline comparison
+                    def del_phi(phi1, phi2):
+                        return np.abs((phi1 - phi2 + np.pi) % (2 * np.pi) - np.pi)
+
+                    # back-to-back AK8 jets
+                    zbb_ak8jets_dphi = np.abs(
+                        del_phi(bbFatJetVars["bbFatJetPhi"][:, 0], bbFatJetVars["bbFatJetPhi"][:, 1])
+                    )
+                    add_selection("ak8_back2back", zbb_ak8jets_dphi >= (np.pi / 2), *selection_args)
+
+                    # HT > 600 (Fully efficient region for scouting HT trigger)
+                    add_selection("ht600", eventVars["ht"] >= 600, *selection_args) # Changed from 600 to 1000 for scouting-offline comparison
 
                 # Consider replacing 0lep with "for leptons require DeltaR>0.8 from the Xbb-tagged AK8 jet. This way we avoid electrons or muons from b hadron decays, which is the main thing"
 
