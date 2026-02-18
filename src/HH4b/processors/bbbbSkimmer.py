@@ -1737,10 +1737,14 @@ class bbbbSkimmer(SkimmerABC):
                     del cut_pt_lead
 
                     cut_txbb_lead = (
-                        (bbFatJetVars["bbFatJetScoutParTTXbb"][:, 0] >= 0.3) 
+                        (bbFatJetVars["bbFatJetScoutParTTXbb"][:, 0] >= 0.0) 
                     )
                     add_selection("ak8_TXbb_lead", cut_txbb_lead, *selection_args)
                     del cut_txbb_lead
+
+                    cut_mx2p_lead = (
+                        (bbFatJetVars["bbFatJetScoutParTmassCorrectedX2p"][:, 0] >= 40) # replacing txbb cut with mX2p cut
+                    )
 
                     # FatJet1 with pT>200
                     cut_pt_subl = (
