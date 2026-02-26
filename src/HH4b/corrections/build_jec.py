@@ -6,6 +6,8 @@ from pathlib import Path
 from coffea.jetmet_tools import CorrectedJetsFactory, CorrectedMETFactory, JECStack
 from coffea.lookup_tools import extractor
 
+# This function builds the run3 JECs for offline. Note that this is how you have to implement JECs in coffea.
+
 jec_name_map = {
     "JetPt": "pt",
     "JetMass": "mass",

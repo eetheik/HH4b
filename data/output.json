@@ -1,0 +1,154 @@
+{
+    "2023": {
+        "VJetsLO": {
+            "Zto2Q-4Jets_HT-200to400": 193,
+            "Zto2Q-4Jets_HT-400to600": 324,
+            "Zto2Q-4Jets_HT-600to800": 360,
+            "Zto2Q-4Jets_HT-800": 372,
+            "Wto2Q-3Jets_HT-200to400": 64,
+            "Wto2Q-3Jets_HT-400to600": 67,
+            "Wto2Q-3Jets_HT-600to800": 76,
+            "Wto2Q-3Jets_HT-800": 90
+        },
+        "VJets": {
+            "Zto2Q-2Jets_PTQQ-100to200_1J": 2531,
+            "Zto2Q-2Jets_PTQQ-100to200_2J": 2632,
+            "Zto2Q-2Jets_PTQQ-200to400_1J": 1254,
+            "Zto2Q-2Jets_PTQQ-200to400_2J": 3440,
+            "Zto2Q-2Jets_PTQQ-400to600_1J": 160,
+            "Zto2Q-2Jets_PTQQ-400to600_2J": 288,
+            "Zto2Q-2Jets_PTQQ-600_1J": 197,
+            "Zto2Q-2Jets_PTQQ-600_2J": 206,
+            "Wto2Q-2Jets_PTQQ-100to200_1J": 0,
+            "Wto2Q-2Jets_PTQQ-100to200_2J": 0,
+            "Wto2Q-2Jets_PTQQ-200to400_1J": 2912,
+            "Wto2Q-2Jets_PTQQ-200to400_2J": 6146,
+            "Wto2Q-2Jets_PTQQ-400to600_1J": 146,
+            "Wto2Q-2Jets_PTQQ-400to600_2J": 532,
+            "Wto2Q-2Jets_PTQQ-600_1J": 142,
+            "Wto2Q-2Jets_PTQQ-600_2J": 211
+        },
+        "Data": {
+            "Run2023C": 7321
+        },
+        "JetMET": {
+            "Run2023C-22Sep2023_v1-v1_DAZSLE_PFNano": 3267,
+            "Run2023C-22Sep2023_v2-v1_DAZSLE_PFNano": 3985,
+            "Run2023C-22Sep2023_v3-v1_DAZSLE_PFNano": 4904,
+            "Run2023C-22Sep2023_v4-v1_DAZSLE_PFNano": 11202
+        },
+        "QCD": {
+            "QCD_PT-170to300": 1990,
+            "QCD_PT-300to470": 5767,
+            "QCD_PT-470to600": 2930,
+            "QCD_PT-600to800": 6925,
+            "QCD_PT-800to1000": 4068,
+            "QCD_PT-1000to1400": 2069,
+            "QCD_PT-1800to2400": 314,
+            "QCD_PT-1400to1800": 616,
+            "QCD_PT-2400to3200": 208,
+            "QCD_PT-3200": 100
+        },
+        "TT": {
+            "TTto2L2Nu": 8039,
+            "TTto4Q": 8526,
+            "TTtoLNu2Q": 8521
+        }
+    },
+    "2023BPix": {
+        "VJetsLO": {
+            "Zto2Q-4Jets_HT-200to400": 155,
+            "Zto2Q-4Jets_HT-400to600": 296,
+            "Zto2Q-4Jets_HT-600to800": 161,
+            "Zto2Q-4Jets_HT-800": 160,
+            "Wto2Q-3Jets_HT-200to400": 30,
+            "Wto2Q-3Jets_HT-400to600": 32,
+            "Wto2Q-3Jets_HT-600to800": 45,
+            "Wto2Q-3Jets_HT-800": 41
+        },
+        "VJets": {
+            "Zto2Q-2Jets_PTQQ-100to200_1J": 1674,
+            "Zto2Q-2Jets_PTQQ-100to200_2J": 1305,
+            "Zto2Q-2Jets_PTQQ-200to400_1J": 778,
+            "Zto2Q-2Jets_PTQQ-200to400_2J": 1799,
+            "Zto2Q-2Jets_PTQQ-400to600_1J": 84,
+            "Zto2Q-2Jets_PTQQ-400to600_2J": 120,
+            "Zto2Q-2Jets_PTQQ-600_1J": 89,
+            "Zto2Q-2Jets_PTQQ-600_2J": 110,
+            "Wto2Q-2Jets_PTQQ-100to200_1J": 8108,
+            "Wto2Q-2Jets_PTQQ-100to200_2J": 6356,
+            "Wto2Q-2Jets_PTQQ-200to400_1J": 1776,
+            "Wto2Q-2Jets_PTQQ-200to400_2J": 3805,
+            "Wto2Q-2Jets_PTQQ-400to600_1J": 93,
+            "Wto2Q-2Jets_PTQQ-400to600_2J": 282,
+            "Wto2Q-2Jets_PTQQ-600_1J": 109,
+            "Wto2Q-2Jets_PTQQ-600_2J": 108
+        },
+        "Data": {
+            "Run2023D": 3938
+        },
+        "JetMET": {
+            "Run2023D-22Sep2023_v1-v1_DAZSLE_PFNano": 4671,
+            "Run2023D-22Sep2023_v2-v1_DAZSLE_PFNano": 5512
+        },
+        "QCD": {
+            "QCD_PT-170to300": 240,
+            "QCD_PT-300to470": 2932,
+            "QCD_PT-470to600": 1473,
+            "QCD_PT-600to800": 3518,
+            "QCD_PT-800to1000": 2078,
+            "QCD_PT-1000to1400": 1030,
+            "QCD_PT-1800to2400": 158,
+            "QCD_PT-1400to1800": 318,
+            "QCD_PT-2400to3200": 118,
+            "QCD_PT-3200": 50
+        },
+        "TT": {
+            "TTto2L2Nu": 4124,
+            "TTto4Q": 8526,
+            "TTtoLNu2Q": 6950
+        }
+    },
+    "2024": {
+        "VJetsLO": {
+            "Wto2Q-3Jets_Bin-HT-100to400": 4656,
+            "Wto2Q-3Jets_Bin-HT-1500to2500": 59,
+            "Wto2Q-3Jets_Bin-HT-2500": 1226,
+            "Wto2Q-3Jets_Bin-HT-400to800": 6131,
+            "Wto2Q-3Jets_Bin-HT-800to1500": 917,
+            "Zto2Q-4Jets_Bin-HT-100to400": 5416,
+            "Zto2Q-4Jets_Bin-HT-1500to2500": 1373,
+            "Zto2Q-4Jets_Bin-HT-2500": 23,
+            "Zto2Q-4Jets_Bin-HT-400to800": 2751,
+            "Zto2Q-4Jets_Bin-HT-800to1500": 974
+        },
+        "VJets": {},
+        "Data": {
+            "Run2024B": 0,
+            "Run2024C": 3817,
+            "Run2024D": 4504,
+            "Run2024E": 8650,
+            "Run2024F": 23910,
+            "Run2024G": 31888,
+            "Run2024H": 4478,
+            "Run2024I": 10164
+        },
+        "JetMET": {},
+        "QCD": {
+            "QCD-4Jets_Bin-HT-100to200": 1468,
+            "QCD-4Jets_Bin-HT-200to400": 1597,
+            "QCD-4Jets_Bin-HT-400to600": 1601,
+            "QCD-4Jets_Bin-HT-600to800": 1998,
+            "QCD-4Jets_Bin-HT-800to1000": 2057,
+            "QCD-4Jets_Bin-HT-1000to1200": 2018,
+            "QCD-4Jets_Bin-HT-1200to1500": 1940,
+            "QCD-4Jets_Bin-HT-1500to2000": 2195,
+            "QCD-4Jets_Bin-HT-2000": 1812
+        },
+        "TT": {
+            "TTto2L2Nu": 5463,
+            "TTto4Q": 7740,
+            "TTtoLNu2Q": 7786
+        }
+    }
+}
