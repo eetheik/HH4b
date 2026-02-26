@@ -318,7 +318,7 @@ def bregcorr(jets: JetArray):
     )
 
 
-def get_ak8jets(fatjets: FatJetArray): # TODO: This is the goldmine for the variables which are read in
+def get_ak8jets(fatjets: FatJetArray): # NOTE: This is the goldmine for the variables which are read in
     """
     Add extra variables to FatJet collection (mostly renaming)
     """
@@ -487,20 +487,20 @@ def get_ak8jets(fatjets: FatJetArray): # TODO: This is the goldmine for the vari
         fatjets["ParT3PQCD"] = fatjets.globalParT3_QCD
 
         # no globalParT3_TopbW
-        fatjets["ParT3PTopbWev"] = fatjets.globalParT3_TopbWev
-        fatjets["ParT3PTopbWmv"] = fatjets.globalParT3_TopbWmv
-        fatjets["ParT3PTopbWq"] = fatjets.globalParT3_TopbWq
-        fatjets["ParT3PTopbWqq"] = fatjets.globalParT3_TopbWqq
-        fatjets["ParT3PTopbWtauhv"] = fatjets.globalParT3_TopbWtauhv
+        # fatjets["ParT3PTopbWev"] = fatjets.globalParT3_TopbWev
+        # fatjets["ParT3PTopbWmv"] = fatjets.globalParT3_TopbWmv
+        # fatjets["ParT3PTopbWq"] = fatjets.globalParT3_TopbWq
+        # fatjets["ParT3PTopbWqq"] = fatjets.globalParT3_TopbWqq
+        # fatjets["ParT3PTopbWtauhv"] = fatjets.globalParT3_TopbWtauhv
 
         fatjets["ParT3PXbb"] = fatjets.globalParT3_Xbb
-        fatjets["ParT3PXcc"] = fatjets.globalParT3_Xcc
-        fatjets["ParT3PXcs"] = fatjets.globalParT3_Xcs
-        fatjets["ParT3PXqq"] = fatjets.globalParT3_Xqq
+        # fatjets["ParT3PXcc"] = fatjets.globalParT3_Xcc
+        # fatjets["ParT3PXcs"] = fatjets.globalParT3_Xcs
+        # fatjets["ParT3PXqq"] = fatjets.globalParT3_Xqq
 
-        fatjets["ParT3PXtauhtaue"] = fatjets.globalParT3_Xtauhtaue
-        fatjets["ParT3PXtauhtauh"] = fatjets.globalParT3_Xtauhtauh
-        fatjets["ParT3PXtauhtaum"] = fatjets.globalParT3_Xtauhtaum
+        # fatjets["ParT3PXtauhtaue"] = fatjets.globalParT3_Xtauhtaue
+        # fatjets["ParT3PXtauhtauh"] = fatjets.globalParT3_Xtauhtauh
+        # fatjets["ParT3PXtauhtaum"] = fatjets.globalParT3_Xtauhtaum
 
         # T for discriminator
         fatjets["ParT3TXbb"] = fatjets.globalParT3_Xbb / (
@@ -519,7 +519,6 @@ def get_ak8jets(fatjets: FatJetArray): # TODO: This is the goldmine for the vari
     if "scoutGlobalParT_prob_Xbb" in fatjets_fields: # This could be an elif since it is mutually exclusive with globalParT3_Xbb; and other taggers
         fatjets["ScoutParTPQCD"] = fatjets.scoutGlobalParT_prob_QCD
 
-        # none of these are in scouting; TODO: What are they? Scores for tagging Top-b-W-electron-neutrino etc? What's the use?
         # fatjets["scoutParTPTopbWev"] = fatjets.globalParT3_TopbWev
         # fatjets["scoutParTPTopbWmv"] = fatjets.globalParT3_TopbWmv
         # fatjets["scoutParTPTopbWq"] = fatjets.globalParT3_TopbWq
@@ -612,6 +611,9 @@ def good_ak8jets(
         & (abs(fatjets.eta) < eta)
         & ((fatjets.msoftdrop > msd) | (fatjets[mreg_str] > mreg))
     )
+
+    print(mreg_str)
+    
     return fatjets[fatjet_sel]
 
 

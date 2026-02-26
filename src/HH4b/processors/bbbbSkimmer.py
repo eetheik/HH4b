@@ -123,7 +123,7 @@ class bbbbSkimmer(SkimmerABC):
             **P4,
             "id": "Id",
         },
-        "FatJet": { # TODO: Likely have to edit this if I want the glopartv3 to work well. What should it be after skimming though?
+        "FatJet": {
             **P4,
             "msoftdrop": "Msd",
             "Txbb": "PNetTXbb",  # these are discriminants
@@ -170,7 +170,7 @@ class bbbbSkimmer(SkimmerABC):
     fatjet_selection = {  # noqa: RUF012
         "pt": 250,
         "eta": 2.5,
-        "msd": 50,
+        "msd": 0, 
         "mreg": 0,
     }
     # fatjet selection for the TXbb SF measurement using the Zbb method
@@ -182,10 +182,10 @@ class bbbbSkimmer(SkimmerABC):
     }
 
     zbb_fatjet_scouting_selection = {  
-        "pt": 200, # lower pt bound to 150 for scouting fatjet
-        "eta": 2.4, # Changed to 2.2 from 2.4, source Patin
+        "pt": 200,
+        "eta": 2.4, # TODO: Change to 2.2 from 2.4, source Patin
         "msd": 0,
-        "mreg": 0,
+        "mreg": 0, # this wont work, default mass var not correct in function that takes this dict
     }
 
     vbf_jet_selection = {  # noqa: RUF012
@@ -489,14 +489,21 @@ class bbbbSkimmer(SkimmerABC):
         - == 2 AK8 jets with pT>450 and mSD>50
         - == 2 AK8 jets with Xbb>0.1
         - == 2 AK8 jets with Tau3OverTau2<0.46
-        zbb region:
+        zbb region (offline):
         - HLT OR for both data and MC
         - >=2 AK8 jets
         - Keep the two TXbb leading AK8 jets
-        - One AK8 jet with pT>250 and mSD>40
+        - One AK8 jet with pT>450
         - The other AK8 jet with pT>200
         - 0 veto leptons
         - no b-tagged AK4 jets with pT>30, |eta|<2.4, and dR(ak4, fatjet0_xbb) > 0.8
+        zbb region (scouting):
+        - Jet HT DST or OR(L1 jet HT seeds) for both data and MC
+        - >=2 AK8 jets
+        - One AK8 jet with pT > 300, (TXbb > 0.3)
+        - The other AK8 jet with pT > 200
+        - HT > 600
+        - (|eta| < 2.4 for fatjets inherited from initial fatjet selection)
         """
         self._region = region
 
@@ -524,7 +531,6 @@ class bbbbSkimmer(SkimmerABC):
         else:
             self.bdt_model = None
 
-        # TODO: is this only needed for BDT? 
         # JMSR
         self.jmsr_vars = ["msoftdrop", "particleNet_mass"] if not self.use_scouting else ["msoftdrop"] 
         if self._nano_version == "v12v2_private":
@@ -539,12 +545,6 @@ class bbbbSkimmer(SkimmerABC):
                 "ParT3massGeneric",
                 "ParT3massCorrectedX2p",
             ]
-        # if self._nano_version == "v15":
-        #     self.jmsr_vars += [
-        #         "particleNet_mass_legacy",
-        #         "ParT3massGeneric",
-        #         "ParT3massCorrX2p",
-        #     ]
         if self._nano_version == "v15_scouting":
             if self.use_scouting:
                 self.jmsr_vars += [
@@ -563,11 +563,13 @@ class bbbbSkimmer(SkimmerABC):
             jmr_val = HH4b.hh_vars.jmsr_values["bbFatJetParTmassVis"]["JMR"][jmsr_year] 
             jms_val = HH4b.hh_vars.jmsr_values["bbFatJetParTmassVis"]["JMS"][jmsr_year]
 
-            if self.use_scouting and self._nano_version == "v15_scouting":
-                jmr_val = {"nom": 1.0, "down": 0.9, "up": 1.1}
+            if self.use_scouting and self._nano_version == "v15_scouting": 
+                # Just some guesses which we use, ought to be updated per mass variable once results are ready for Scouting
+                # For consistency below I also use the same ones for offline
+                jmr_val = {"nom": 1.05, "down": 1.0, "up": 1.1}
                 jms_val = {"nom": 1.0, "down": 0.9, "up": 1.1}
             if not self.use_scouting and self._nano_version == "v15_scouting": # scouting MC with offline data
-                jmr_val = {"nom": 1.0, "down": 0.9, "up": 1.1} # just apply same ones for now
+                jmr_val = {"nom": 1.05, "down": 1.0, "up": 1.1}
                 jms_val = {"nom": 1.0, "down": 0.9, "up": 1.1}
 
             self.jmr_values[jmsr_year] = dict.fromkeys(self.jmsr_vars)
@@ -576,7 +578,7 @@ class bbbbSkimmer(SkimmerABC):
             for jmsr_var in self.jmsr_vars:
                 self.jmr_values[jmsr_year][jmsr_var] = [1, 1, 1] 
                 self.jms_values[jmsr_year][jmsr_var] = [1, 1, 1]
-            # update values for ParTmassVis
+            # update values for Vis, X2p and Generic, mSD: Note not applied to W2p 
             self.jmr_values[jmsr_year]["ParTmassVis"] = [
                 jmr_val["nom"],
                 jmr_val["down"],
@@ -600,6 +602,7 @@ class bbbbSkimmer(SkimmerABC):
                 ]
             if self._nano_version == "v15_scouting": 
                 if self.use_scouting:
+                    # jmr
                     self.jmr_values[jmsr_year]["ScoutParTmassGeneric"] = [
                         jmr_val["nom"],
                         jmr_val["down"],
@@ -610,7 +613,14 @@ class bbbbSkimmer(SkimmerABC):
                         jmr_val["down"],
                         jmr_val["up"],
                     ]
+                    self.jmr_values[jmsr_year]["msoftdrop"] = [
+                        jmr_val["nom"],
+                        jmr_val["down"],
+                        jmr_val["up"],
+                    ]
 
+
+                    # jms
                     self.jms_values[jmsr_year]["ScoutParTmassGeneric"] = [
                         jms_val["nom"],
                         jms_val["down"],
@@ -621,7 +631,14 @@ class bbbbSkimmer(SkimmerABC):
                         jms_val["down"],
                         jms_val["up"],
                     ]
-                else: # TODO: Test!
+                    self.jms_values[jmsr_year]["msoftdrop"] = [
+                        jms_val["nom"],
+                        jms_val["down"],
+                        jms_val["up"],
+                    ]
+
+                else: 
+                    # jmr
                     self.jmr_values[jmsr_year]["ParT3massGeneric"] = [
                         jmr_val["nom"],
                         jmr_val["down"],
@@ -632,18 +649,29 @@ class bbbbSkimmer(SkimmerABC):
                         jmr_val["down"],
                         jmr_val["up"],
                     ]
+                    self.jmr_values[jmsr_year]["msoftdrop"] = [
+                        jmr_val["nom"],
+                        jmr_val["down"],
+                        jmr_val["up"],
+                    ]
 
-                    self.jmr_values[jmsr_year]["ParT3massGeneric"] = [
+
+                    # jms
+                    self.jms_values[jmsr_year]["ParT3massGeneric"] = [
                         jms_val["nom"],
                         jms_val["down"],
                         jms_val["up"],
                     ]
-                    self.jmr_values[jmsr_year]["ParT3massCorrectedX2p"] = [
+                    self.jms_values[jmsr_year]["ParT3massCorrectedX2p"] = [
                         jms_val["nom"],
                         jms_val["down"],
                         jms_val["up"],
                     ]
-
+                    self.jms_values[jmsr_year]["msoftdrop"] = [
+                        jms_val["nom"],
+                        jms_val["down"],
+                        jms_val["up"],
+                    ]
         
         # FatJet Vars
         if (
@@ -724,8 +752,6 @@ class bbbbSkimmer(SkimmerABC):
             txbbstr_to_skimmer["glopart-v3"] = "ParT3TXbb"
 
         if self._nano_version == "v15_scouting":
-            # scoutGlobalParT (glopartv3 trained on scouting MC) in v15_scouting (for MC and data)
-            # also have GloParT-v3 available for scouting MC offline reconstruction
             extra_vars = [ 
             "ParT3PQCD",
             # "ParT3PTopbWev",
@@ -790,7 +816,7 @@ class bbbbSkimmer(SkimmerABC):
         isData = not hasattr(events, "genWeight")
 
         # datasets for saving jec variations
-        isJECs = ( # Wasteful for QCD?
+        isJECs = ( # QCD?
             "HHto4B" in dataset
             or "TT" in dataset
             or "Wto2Q" in dataset
@@ -826,7 +852,8 @@ class bbbbSkimmer(SkimmerABC):
         else:
             veto_muon_sel = veto_scouting_muons(events.ScoutingMuonNoVtx if hasattr(events, "ScoutingMuonNoVtx") else events.ScoutingMuon)
 
-        veto_electron_sel = veto_electrons(events.Electron) if not self.use_scouting else veto_scouting_electrons(events.ScoutingElectron) 
+        veto_electron_sel = veto_electrons(events.Electron) if not self.use_scouting else veto_scouting_electrons(events.ScoutingElectron)
+
         if self._region in ["semilep-tt", "zbb-DYLL-data"]:
             good_muon_sel = good_muons(events.Muon) 
             muons = events.Muon[good_muon_sel] 
@@ -1478,8 +1505,8 @@ class bbbbSkimmer(SkimmerABC):
             for mf in self.met_filters:
                 if mf in events.Flag.fields:
                     cut_metfilters = cut_metfilters & events.Flag[mf]
-            apply_met_filters = True
-            # apply_met_filters = False # Temporarily drop MET filters for offline (scouting comparison)
+            # apply_met_filters = True
+            apply_met_filters = False # Temporarily drop MET filters for offline (scouting comparison)
         else:
             apply_met_filters = False # Drop MET filters for scouting, can't do them
 
@@ -1614,8 +1641,8 @@ class bbbbSkimmer(SkimmerABC):
                 # >=2 AK8 jets
                 add_selection("num_ak8jets", eventVars["nFatJets"] >= 2, *selection_args)
 
-                cut_pt_lead = ( # Pretty much only requirement one is allowed to make on QCD?
-                    (bbFatJetVars["bbFatJetPt"][:, 0] >= 450) # Delta R(bb) = 2m_H / p_T, so p_T ~ 312.5 would be boosted regime
+                cut_pt_lead = (
+                    (bbFatJetVars["bbFatJetPt"][:, 0] >= 450) # Delta R(bb) = 2m_H / p_T, so p_T ~ 312.5 would be boosted regime for Higgs
                 )
                 add_selection("ak8_pt_lead", cut_pt_lead, *selection_args)
                 del cut_pt_lead
@@ -1636,25 +1663,69 @@ class bbbbSkimmer(SkimmerABC):
                 add_selection("ak8_pt_subl", cut_pt_subl, *selection_args)
                 del cut_pt_subl
 
-                # FatJet0 with pT>250, mSD>40
-                # cut_pt_lead = (
-                #     np.sum(
-                #         (bbFatJetVars["bbFatJetPt"][:, :2] >= 300)
-                #         & (bbFatJetVars["bbFatJetMsd"][:, :2] >= 20), 
-                #         axis=1,
-                #     )
-                # ) >= 1
-                # add_selection("ak8_ptmSD_lead", cut_pt_lead, *selection_args)
+                def del_phi(phi1, phi2):
+                    return np.abs((phi1 - phi2 + np.pi) % (2 * np.pi) - np.pi)
 
-                # # FatJet1 with pT>200
-                # cut_pt_subl = (
-                #     np.sum(
-                #         bbFatJetVars["bbFatJetPt"][:, :2] >= 200,
+                # back-to-back AK8 jets
+                zbb_ak8jets_dphi = np.abs(
+                    del_phi(bbFatJetVars["bbFatJetPhi"][:, 0], bbFatJetVars["bbFatJetPhi"][:, 1])
+                )
+                add_selection("ak8_back2back", zbb_ak8jets_dphi >= (np.pi / 2), *selection_args)
+
+                # HT > 1000
+                add_selection("ht1000", eventVars["ht"] >= 1000, *selection_args) 
+
+                # 0 veto leptons
+                # add_selection(
+                #     "0lep",
+                #     (ak.sum(veto_muon_sel, axis=1) == 0) & (ak.sum(veto_electron_sel, axis=1) == 0),
+                #     *selection_args,
+                # )
+
+                # top veto: no medium b-tagged AK4 jets with pT>30, |eta|<2.4, and dR(ak4, bbFatJet0) > 0.8
+                # medium_btag_th_dict = {
+                #     "2022": 0.3086,
+                #     "2022EE": 0.3196,
+                #     "2023": 0.2431,
+                #     "2023BPix": 0.2435,
+                # }
+
+                # Temporarily removing offline top_veto so that scouting and offline cutflow are the same
+                # no medium b-tagged AK4 jets with pT>30, |eta|<2.4, and dR(ak4, bbFatJet0) > 0.8
+                # cut_top_veto = (
+                #     ak.sum(
+                #         ak4_jets_awayfromak8.btagDeepFlavB >= medium_btag_th_dict[year],
                 #         axis=1,
                 #     )
-                # ) >= 2  # >=2 because we already have the lead fatjet
-                # add_selection("ak8_pt_subl", cut_pt_subl, *selection_args)
-                # eta cut already done
+                #     == 0
+                # )
+                # add_selection("top_veto", cut_top_veto, *selection_args)
+
+            else: # use scouting variables
+                # >=2 AK8 jets
+                add_selection("num_ak8jets", eventVars["nFatJets"] >= 2, *selection_args)
+
+                cut_pt_lead = (
+                    (bbFatJetVars["bbFatJetPt"][:, 0] >= 300) # Delta R(bb) = 2m_H / p_T, so p_T ~ 312.5 would be boosted regime for Higgs
+                )
+                add_selection("ak8_pt_lead", cut_pt_lead, *selection_args)
+                del cut_pt_lead
+
+                cut_txbb_lead = (
+                    (bbFatJetVars["bbFatJetScoutParTTXbb"][:, 0] >= 0.3) 
+                )
+                add_selection("ak8_TXbb_lead", cut_txbb_lead, *selection_args)
+                del cut_txbb_lead
+
+                # FatJet1 with pT>200
+                cut_pt_subl = (
+                    np.sum(
+                        bbFatJetVars["bbFatJetPt"][:, :2] >= 200, 
+                        axis=1,
+                    )
+                ) >= 2  # >=2 because we already have the lead fatjet
+                add_selection("ak8_pt_subl", cut_pt_subl, *selection_args)
+                del cut_pt_subl
 
                 def del_phi(phi1, phi2):
                     return np.abs((phi1 - phi2 + np.pi) % (2 * np.pi) - np.pi)
@@ -1665,158 +1736,14 @@ class bbbbSkimmer(SkimmerABC):
                 )
                 add_selection("ak8_back2back", zbb_ak8jets_dphi >= (np.pi / 2), *selection_args)
 
-                # >= 1 AK8 jet with ParT/PNet Xbb >= 0.1
-                # if self._nano_version.startswith("v14"):
-                #     # ParT2 and ParT3 in v14
-                #     cut_txbb = (
-                #         (np.sum(bbFatJetVars["bbFatJetParT2TXbb"][:, :2] >= 0.1, axis=1) >= 1)
-                #         | (np.sum(bbFatJetVars["bbFatJetParT3TXbb"][:, :2] >= 0.1, axis=1) >= 1)
-                #         | (np.sum(bbFatJetVars["bbFatJetPNetTXbbLegacy"][:, :2] >= 0.1, axis=1) >= 1)
-                #     )
-                # elif self._nano_version.startswith("v15"):
-                #     # ParT3 in v15
-                #     cut_txbb = (
-                #         (np.sum(bbFatJetVars["bbFatJetParT3TXbb"][:, :2] >= 0.1, axis=1) >= 1)
-                #         # | (np.sum(bbFatJetVars["bbFatJetPNetTXbbLegacy"][:, :2] >= 0.1, axis=1) >= 1) 
-                #     )
-                # else:
-                #     cut_txbb = (np.sum(bbFatJetVars["bbFatJetParTTXbb"][:, :2] >= 0.1, axis=1) >= 1) | (
-                #         np.sum(bbFatJetVars["bbFatJetPNetTXbbLegacy"][:, :2] >= 0.1, axis=1) >= 1
-                #     )
-                # add_selection("ak8bb_txbb", cut_txbb, *selection_args)
+                # HT > 600 (Fully efficient region for scouting HT trigger)
+                add_selection("ht600", eventVars["ht"] >= 600, *selection_args) 
 
-                # HT > 1000
-                add_selection("ht1000", eventVars["ht"] >= 1000, *selection_args) # This might have to remain at 1000 given offline triggers
-
-                # Removed 0lep veto from offline since it is not included in scouting (for comparison)
-                # 0 veto leptons
-                # TODO: check if this is correct
-                add_selection(
-                    "0lep",
-                    (ak.sum(veto_muon_sel, axis=1) == 0) & (ak.sum(veto_electron_sel, axis=1) == 0),
-                    *selection_args,
-                )
-
-               # top veto: no medium b-tagged AK4 jets with pT>30, |eta|<2.4, and dR(ak4, bbFatJet0) > 0.8
-                medium_btag_th_dict = {
-                    "2022": 0.3086,
-                    "2022EE": 0.3196,
-                    "2023": 0.2431,
-                    "2023BPix": 0.2435,
-                }
-
-                # Temporarily removing offline top_veto so that scouting and offline cutflow are the same
-                # no medium b-tagged AK4 jets with pT>30, |eta|<2.4, and dR(ak4, bbFatJet0) > 0.8
-                cut_top_veto = (
-                    ak.sum(
-                        ak4_jets_awayfromak8.btagDeepFlavB >= medium_btag_th_dict[year],
-                        axis=1,
-                    )
-                    == 0
-                )
-                add_selection("top_veto", cut_top_veto, *selection_args)
-
-            else: # use scouting variables
-
-                if "QCD" in dataset: # Currently just want to minimally process QCD
-                    cut_pt_lead = (
-                        (bbFatJetVars["bbFatJetPt"][:, 0] >= 300) 
-                    )
-                    add_selection("ak8_pt_lead", cut_pt_lead, *selection_args) 
-                    del cut_pt_lead
-
-                    add_selection("ht600", eventVars["ht"] >= 600, *selection_args)
-                else:
-                    # >=2 AK8 jets
-                    add_selection("num_ak8jets", eventVars["nFatJets"] >= 2, *selection_args)
-
-                    cut_pt_lead = (
-                        (bbFatJetVars["bbFatJetPt"][:, 0] >= 300) # Delta R(bb) = 2m_H / p_T, so p_T ~ 312.5 would be boosted regime
-                    )
-                    add_selection("ak8_pt_lead", cut_pt_lead, *selection_args)
-                    del cut_pt_lead
-
-                    cut_txbb_lead = (
-                        (bbFatJetVars["bbFatJetScoutParTTXbb"][:, 0] >= 0.0) 
-                    )
-                    add_selection("ak8_TXbb_lead", cut_txbb_lead, *selection_args)
-                    del cut_txbb_lead
-
-                    cut_mx2p_lead = (
-                        (bbFatJetVars["bbFatJetScoutParTmassCorrectedX2p"][:, 0] >= 40) # replacing txbb cut with mX2p cut
-                    )
-                    add_selection("cut_mx2p_lead", cut_mx2p_lead, *selection_args)
-                    del cut_mx2p_lead
-
-                    # FatJet1 with pT>200
-                    cut_pt_subl = (
-                        np.sum(
-                            bbFatJetVars["bbFatJetPt"][:, :2] >= 200, 
-                            axis=1,
-                        )
-                    ) >= 2  # >=2 because we already have the lead fatjet
-                    add_selection("ak8_pt_subl", cut_pt_subl, *selection_args)
-                    del cut_pt_subl
-
-                    def del_phi(phi1, phi2):
-                        return np.abs((phi1 - phi2 + np.pi) % (2 * np.pi) - np.pi)
-
-                    # back-to-back AK8 jets
-                    zbb_ak8jets_dphi = np.abs(
-                        del_phi(bbFatJetVars["bbFatJetPhi"][:, 0], bbFatJetVars["bbFatJetPhi"][:, 1])
-                    )
-                    add_selection("ak8_back2back", zbb_ak8jets_dphi >= (np.pi / 2), *selection_args)
-
-                    # HT > 600 (Fully efficient region for scouting HT trigger)
-                    add_selection("ht600", eventVars["ht"] >= 600, *selection_args) # Changed from 600 to 1000 for scouting-offline comparison
-
-                # Consider replacing 0lep with "for leptons require DeltaR>0.8 from the Xbb-tagged AK8 jet. This way we avoid electrons or muons from b hadron decays, which is the main thing"
-
-                # First cut which we want to investigate on tt to2q & lnu
-                # electrons = ak.Array(events.ScoutingElectron[veto_electron_sel]) # these are the loosest electrons, so we will use them here
-                # muons = ak.Array(events.ScoutingMuonNoVtx[veto_muon_sel]) if hasattr(events, "ScoutingMuonNoVtx") else ak.Array(events.ScoutingMuon[veto_muon_sel])
-
-                # dphi_fj0_met = del_phi(bbFatJetVars["bbFatJetPhi"][:, 0], eventVars["MET_phi"])
-                # dphi_fj0_mu = np.abs((muons.phi - bbFatJetVars["bbFatJetPhi"][:, 0][:, np.newaxis] + np.pi) % (2 * np.pi) - np.pi)
-                # dphi_fj0_el = np.abs((electrons.phi - bbFatJetVars["bbFatJetPhi"][:, 0][:, np.newaxis] + np.pi) % (2 * np.pi) - np.pi)
-
-                # met_opposite = dphi_fj0_met >= (np.pi/2)
-                # mu_opposite = ak.any(dphi_fj0_mu >= (np.pi/2), axis=1)
-                # el_opposite = ak.any(dphi_fj0_el >= (np.pi/2), axis=1)
-                # ak8_opposite = zbb_ak8jets_dphi >= (np.pi / 2)
-
-                # lepton_opposite = mu_opposite | el_opposite
-
-                # cut_TTto2QLnu = ~(lepton_opposite & met_opposite & ak8_opposite) # Probably not necessary to require AK8 here
-
-                # add_selection("cut_TTto2QLnu", cut_TTto2QLnu, *selection_args)
-
-                # Should just veto on all leptons, or then generalize above AK8_opposite to also consider AK4 jets; 
-                # then could/should get rid of two AK8 jets requirement?
-
-                # add_selection("0lep", zero_lep, *selection_args)
-                # del zero_lep, zbb_ak8jets_dphi
-
-                # dphi_fj0_subl = del_phi(bbFatJetVars["bbFatJetPhi"][:, 0], bbFatJetVars["bbFatJetPhi"][:, 1:]) # all subl fatjets
-                # subl_opposite = dphi_fj0_subl >= (np.pi/2)
-
-                # # Second cut on tt to 4q
-                # w_tag = (
-                #     (bbFatJetVars["bbFatJetScoutParTTXcs"][:, 1:] >= 0.1)
-                #     | (bbFatJetVars["bbFatJetScoutParTTXbs"][:, 1:] >= 0.1)
-                #     | (bbFatJetVars["bbFatJetScoutParTTXbc"][:, 1:] >= 0.1)
+                # add_selection(
+                #     "0lep",
+                #     (ak.sum(veto_muon_sel, axis=1) == 0) & (ak.sum(veto_electron_sel, axis=1) == 0),
+                #     *selection_args,
                 # )
-
-                # W_tagged_subl_opposite_fatjets = ak.any(ak8_opposite & w_tag, axis=1)
-
-                # cut_tt4Q_veto = ~W_tagged_subl_opposite_fatjets
-
-                # add_selection("cut_tt4Q_veto", cut_tt4Q_veto, *selection_args)
-                # del dphi_fj0_subl, subl_opposite, w_tag, W_tagged_subl_opposite_fatjets, cut_tt4Q_veto
-
-                # eventVars["fj_0lep"] = {k: v[zero_lep] for k, v in bbFatJetVars.items()}
-                # eventVars["fj_TTto2QLnu"] = {k: v[cut_TTto2QLnu] for k, v in bbFatJetVars.items()}
-                # eventVars["fj_tt4Q_veto"] = {k: v[cut_tt4Q_veto] for k, v in bbFatJetVars.items()}
 
                 # medium_btag_th_dict = { # Commented out values are for deepFlavB
                 #     # "2022": 0.3086,
