@@ -17,6 +17,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 import os
 import pyarrow.parquet as pq
+from os import listdir
+import pyarrow as pa
 
 import hist
 import numpy as np
@@ -312,7 +314,8 @@ def _reorder_txbb(events: pd.DataFrame, txbb):
         if key.startswith("bbFatJet"):
             events[key] = np.take_along_axis(events[key].to_numpy(), bbord, axis=1)
 
-def load_samples(
+# This was a function I tried to use when attempting to optimize the template generation.
+def stream_samples( 
     data_dir: Path,
     samples: dict[str, str],
     year: str,
@@ -323,366 +326,172 @@ def load_samples(
     reorder_txbb: bool = False,
     txbb_str: str = "bbFatJetPNetTXbbLegacy",
     load_weight_noxsec: bool = True,
-) -> dict[str, pd.DataFrame]:
-    events_dict = {}
-
+):
+    """
+    Streams samples by yielding them inside the loop over samples rather than concatenating and returning full sample
+    """
     data_dir = Path(data_dir) / year
-    full_samples_list = os.listdir(data_dir)
-    print(full_samples_list)
+    full_samples_list = listdir(data_dir)
 
     for label, selector in samples.items():
         load_columns = columns
         if label != "data" and load_weight_noxsec:
             load_columns = columns + format_columns([("weight_noxsec", 1)])
 
-        events_dict[label] = []
         for sample in full_samples_list:
-
             if not check_selector(sample, selector):
                 continue
 
             sample_path = data_dir / sample
             parquet_path = sample_path / "parquet"
+            pickles_path = sample_path / "pickles"
 
             if not parquet_path.exists():
-                warnings.warn(f"No parquet directory for {sample}!", stacklevel=1)
                 continue
 
-            try:
-                non_empty_passed_list = []
-                for parquet_file in parquet_path.glob("[!.]*.parquet"): # I sometimes got system files which we don't want, e.g. ".sys.v#.out_1863.parquet" so I filter them out with the [!.] part
-                    try:
-                        meta = pq.ParquetFile(parquet_file).metadata
-                        if meta.num_rows == 0:
-                            # empty file, skip
-                            continue
+            pickles = get_pickles(pickles_path, year, sample)
 
-                        df_sample = pd.read_parquet(parquet_file, filters=filters, columns=load_columns)
-                        if not df_sample.empty: # In case filters get rid of all rows
-                            non_empty_passed_list.append(df_sample)
-                    except Exception as e:
-                        warnings.warn(f"Error when reading parquet file {parquet_file}. Error: {e}", stacklevel=1)
-                        continue
-                
-                if not non_empty_passed_list:
+            for parquet_file in parquet_path.glob("*.parquet"):
+                print(f"Streaming {parquet_file}")
+
+                # Doesn't read the file, just metadata
+                meta = pq.ParquetFile(parquet_file).metadata
+                if meta.num_rows == 0:
+                    # empty file, skip
                     continue
-                    
-                events = pd.concat(non_empty_passed_list)
-                
-                if events.empty:
-                    warnings.warn(f"No events for {sample}!", stacklevel=1)
-                    continue
+                del meta
+
+                df = pd.read_parquet(
+                    parquet_file,
+                    filters=filters,
+                    columns=load_columns,
+                )
 
                 if reorder_txbb:
-                    _reorder_txbb(events, txbb_str)
+                    _reorder_txbb(df, txbb_str)
 
-                pickles = get_pickles(sample_path / "pickles", year, sample)
+                # weight normalization
                 if "totals" in pickles:
-                    print("Normalizing using pickles")
                     totals = pickles["totals"]
                     _normalize_weights(
-                        events,
+                        df,
                         year,
                         totals,
                         sample,
-                        isData=label == "data",
+                        isData=(label == data_key),
                         variations=variations,
                         weight_shifts=weight_shifts,
                     )
                 else:
-                    if label == "data":
-                        events["finalWeight"] = events["weight"]
+                    if label == data_key:
+                        df["finalWeight"] = df["weight"]
                     else:
-                        n_events = get_nevents(sample_path / "pickles", year, sample)
-                        events["weight_nonorm"] = events["weight"]
-                        events["finalWeight"] = events["weight"] / n_events
+                        n_events = get_nevents(pickles_path, year, sample)
+                        df["weight_nonorm"] = df["weight"]
+                        df["finalWeight"] = df["weight"] / n_events
 
-                events_dict[label].append(events)
-
-            except Exception as e:
-                warnings.warn("Made it to the exception block!")
-                warnings.warn(f"Error loading {sample}: {str(e)}", stacklevel=1)
-                continue
-
-        if label in events_dict and events_dict[label]:
-            events_dict[label] = pd.concat(events_dict[label])
-        else:
-            events_dict.pop(label, None)
-
-    return events_dict
-# eetu mid
-# def load_samples(
-#     data_dir: Path,
-#     samples: dict[str, str],
-#     year: str,
-#     filters: list = None,
-#     columns: list = None,
-#     variations: bool = True,
-#     weight_shifts: dict[str, Syst] = None,
-#     reorder_txbb: bool = False,  # temporary fix for sorting by given Txbb
-#     txbb_str: str = "bbFatJetScoutParTTXbb",
-#     load_weight_noxsec: bool = True,
-# ) -> dict[str, pd.DataFrame]:
-#     """
-#     Loads events with an optional filter.
-#     Divides MC samples by the total pre-skimming, to take the acceptance into account.
-
-#     Args:
-#         data_dir (str): path to data directory.
-#         samples (Dict[str, str]): dictionary of samples and selectors to load.
-#         year (str): year.
-#         filters (List): Optional filters when loading data.
-#         columns (List): Optional columns to load.
-#         variations (bool): Normalize variations as well (saves time to not do so). Defaults to True.
-#         weight_shifts (Dict[str, Syst]): dictionary of weight shifts to consider.
-
-#     Returns:
-#         Dict[str, pd.DataFrame]: ``events_dict`` dictionary of events dataframe for each sample.
-
-#     """
-#     events_dict = {}
-
-#     data_dir = Path(data_dir) / year
-#     full_samples_list = [
-#         str(p.name) for p in Path.iterdir(data_dir)
-#     ]  # get all directories in data_dir
-
-#     logger.debug(f"Full list of directories in {data_dir}: {full_samples_list}")
-#     logger.debug(f"Samples to load {samples}")
-#     print(full_samples_list)
-
-#     # label - key of sample in events_dict
-#     # selector - string used to select directories to load in for this sample
-#     for label, selector in samples.items():
-#         # important to check that samples have been normalized properly
-#         load_columns = columns
-#         if label != "data" and load_weight_noxsec:
-#             load_columns = columns + format_columns([("weight_noxsec", 1)])
-
-#         # events_dict[label] = []  # list of directories we load in for this sample
-
-#         sample_events = [] # list of dataframes we load in for this sample
-
-#         for sample in full_samples_list:
-#             # check if this directory passes our selector string
-#             if not check_selector(sample, selector):
-#                 print(f"Selector string '{selector}'doesn't match with sample '{sample}'")
-#                 continue
-
-#             sample_path = data_dir / sample
-#             parquet_path, pickles_path = sample_path / "parquet", sample_path / "pickles"
-
-#             # no parquet directory?
-#             if not parquet_path.exists():
-#                 warnings.warn(f"No parquet directory for {sample}!", stacklevel=1)
-#                 continue
-
-#             logger.debug(f"Loading {sample}")
-#             try:
-#                 non_empty_passed_list = []
-#                 for parquet_file in parquet_path.glob("*.parquet"):
-#                     df_sample = pd.read_parquet(
-#                         parquet_file, filters=filters, columns=load_columns
-#                     )
-#                     if not df_sample.empty:
-#                         non_empty_passed_list.append(df_sample)
-#                         print(f"Loaded {parquet_file} with {len(df_sample)} entries")
-
-#                 if len(non_empty_passed_list) == 0:
-#                     warnings.warn(f"No entries in parquet files for {sample}!", stacklevel=1)
-#                     continue
-
-#                 # print(f"Concatenating non_empty_passed_list with {len(non_empty_passed_list)} entries")
-#                 events = pd.concat(non_empty_passed_list)
-
-#             except Exception as e:
-#                 warnings.warn(
-#                     f"Can't read file with requested columns/filters for {sample}! File: {parquet_file}. Error {str(e)}.", stacklevel=1
-#                 )
-#                 continue
-
-#             # no events?
-#             if not len(events):
-#                 warnings.warn(f"No events for {sample}!", stacklevel=1)
-#                 continue
-
-#             if reorder_txbb:
-#                 print("Reordering txbb")
-#                 _reorder_txbb(events, txbb_str)
-
-#             # normalize by total events
-#             pickles = get_pickles(pickles_path, year, sample)
-#             if "totals" in pickles:
-#                 totals = pickles["totals"]
-#                 _normalize_weights(
-#                     events,
-#                     year,
-#                     totals,
-#                     sample,
-#                     isData=label == data_key,
-#                     variations=variations,
-#                     weight_shifts=weight_shifts,
-#                 )
-#             else:
-#                 if label == data_key:
-#                     events["finalWeight"] = events["weight"]
-#                 else:
-#                     n_events = get_nevents(pickles_path, year, sample)
-#                     events["weight_nonorm"] = events["weight"]
-#                     events["finalWeight"] = events["weight"] / n_events
-
-#             #events_dict[label].append(events)
-#             sample_events.append(events)
-#             logger.info(f"Loaded {sample: <50}: {len(events)} entries")
-
-#         if len(sample_events) > 0: # Only concatenate if we have any events
-#             events_dict[label] = pd.concat(sample_events)
-#         else:
-#             warnings.warn(
-#                 f"No events loaded for {label} from {data_dir}!", stacklevel=1,
-#             )
-#             events_dict[label] = pd.DataFrame()
-#         # if len(events_dict[label]):
-#         #     events_dict[label] = pd.concat(events_dict[label])
-#         # else:
-#         #     del events_dict[label]
-
-#     return events_dict
-# def load_samples(
-#     data_dir: Path,
-#     samples: dict[str, str],
-#     year: str,
-#     filters: list = None,
-#     columns: list = None,
-#     variations: bool = True,
-#     weight_shifts: dict[str, Syst] = None,
-#     reorder_txbb: bool = False,
-#     txbb_str: str = "bbFatJetScoutParTTXbb",
-#     load_weight_noxsec: bool = True,
-# ) -> dict[str, pd.DataFrame]:
-#     """
-#     Load events from directory based on selectors, handling MC/data weights, filters, and variations.
-
-#     Args:
-#         data_dir (Path): Root path to data.
-#         samples (dict[str, str]): Mapping of sample label to selector string.
-#         year (str): Year name (used to find subdir in data_dir).
-#         filters (list, optional): Parquet filters.
-#         columns (list, optional): Columns to load.
-#         variations (bool, optional): Normalize variations. Default True.
-#         weight_shifts (dict[str, Syst], optional): Weight shifts dict.
-#         reorder_txbb (bool): Whether to reorder jets by txbb.
-#         txbb_str (str): Txbb sorting key.
-#         load_weight_noxsec (bool): Load "weight_noxsec" column for MC samples.
-
-#     Returns:
-#         dict[str, pd.DataFrame]: Sample label -> combined DataFrame.
-#     """
-#     events_dict = {}
-#     sample_base_dir = Path(data_dir) / year
-
-#     try:
-#         full_samples_list = [p.name for p in sample_base_dir.iterdir() if p.is_dir()]
-#     except FileNotFoundError:
-#         warnings.warn(f"Data directory not found: {sample_base_dir}")
-#         return {}
-
-#     logger.debug(f"All sample directories in {sample_base_dir}: {full_samples_list}")
-#     logger.debug(f"Sample selectors to load: {samples}")
-
-#     for label, selector in samples.items():
-#         sample_events = []
-
-#         # Prepare columns
-#         load_columns = list(columns) if columns else []
-#         if label != data_key and load_weight_noxsec:
-#             load_columns += format_columns([("weight_noxsec", 1)])
-
-#         for sample in full_samples_list:
-#             if not check_selector(sample, selector):
-#                 logger.debug(f"[Selector Skip] '{selector}' does not match '{sample}'")
-#                 continue
-
-#             sample_path = sample_base_dir / sample
-#             parquet_path = sample_path / "parquet"
-#             pickles_path = sample_path / "pickles"
-
-#             if not parquet_path.exists():
-#                 warnings.warn(f"Missing parquet directory for sample: {sample}")
-#                 continue
-
-#             logger.info(f"Loading sample '{sample}' for label '{label}'")
-
-#             parquet_files = list(parquet_path.glob("*.parquet"))
-#             non_empty_frames = []
-
-#             for parquet_file in parquet_files:
-#                 try:
-#                     df = pd.read_parquet(parquet_file, filters=filters, columns=load_columns)
-#                     if not df.empty:
-#                         non_empty_frames.append(df)
-#                         logger.debug(f"  Loaded {parquet_file.name} with {len(df)} rows")
-#                 except Exception as e:
-#                     warnings.warn(f"Failed to read {parquet_file.name}: {e}")
-#                     continue
-
-#             if not non_empty_frames:
-#                 warnings.warn(f"No valid parquet data found for sample: {sample}")
-#                 continue
-
-#             events = pd.concat(non_empty_frames, ignore_index=True)
-
-#             if reorder_txbb:
-#                 try:
-#                     _reorder_txbb(events, txbb_str)
-#                 except Exception as e:
-#                     warnings.warn(f"Failed to reorder txbb for {sample}: {e}")
-
-#             # Normalize weights
-#             try:
-#                 pickles = get_pickles(pickles_path, year, sample)
-
-#                 if "totals" in pickles:
-#                     _normalize_weights(
-#                         events,
-#                         year,
-#                         pickles["totals"],
-#                         sample,
-#                         isData=(label == data_key),
-#                         variations=variations,
-#                         weight_shifts=weight_shifts,
-#                     )
-#                 else:
-#                     if label == data_key:
-#                         if "weight" in events.columns:
-#                             events["finalWeight"] = events["weight"]
-#                         else:
-#                             raise KeyError("Missing 'weight' column in data")
-#                     else:
-#                         n_events = get_nevents(pickles_path, year, sample)
-#                         if "weight" in events.columns:
-#                             events["weight_nonorm"] = events["weight"]
-#                             events["finalWeight"] = events["weight"] / n_events
-#                         else:
-#                             raise KeyError("Missing 'weight' column in MC sample")
-
-#             except Exception as e:
-#                 warnings.warn(f"Weight normalization failed for {sample}: {e}")
-#                 continue
-
-#             sample_events.append(events)
-#             logger.info(f"  Completed sample {sample}: {len(events)} events")
-
-#         if sample_events:
-#             events_dict[label] = pd.concat(sample_events, ignore_index=True)
-#         else:
-#             warnings.warn(f"No events loaded for '{label}' from {sample_base_dir}")
-#             events_dict[label] = pd.DataFrame()
-
-#     return events_dict
+                yield df
+                del df
 
 
+def load_samples(
+   data_dir: Path,
+   samples: dict[str, str],
+   year: str,
+   filters: list = None,
+   columns: list = None,
+   variations: bool = True,
+   weight_shifts: dict[str, Syst] = None,
+   reorder_txbb: bool = False,
+   txbb_str: str = "bbFatJetPNetTXbbLegacy",
+   load_weight_noxsec: bool = True,
+) -> dict[str, pd.DataFrame]:
+   events_dict = {}
 
+   data_dir = Path(data_dir) / year
+   full_samples_list = os.listdir(data_dir)
+   print(full_samples_list)
+
+   for label, selector in samples.items():
+       load_columns = columns
+       if label != "data" and load_weight_noxsec:
+           load_columns = columns + format_columns([("weight_noxsec", 1)])
+
+       events_dict[label] = []
+       for sample in full_samples_list:
+
+           if not check_selector(sample, selector):
+               continue
+
+           sample_path = data_dir / sample
+           parquet_path = sample_path / "parquet"
+
+           if not parquet_path.exists():
+               warnings.warn(f"No parquet directory for {sample}!", stacklevel=1)
+               continue
+
+           try:
+               non_empty_passed_list = []
+               for parquet_file in parquet_path.glob("[!.]*.parquet"): # I sometimes got system files which we don't want, e.g. ".sys.v#.out_1863.parquet" so I filter them out with the [!.] part
+                   try:
+                       meta = pq.ParquetFile(parquet_file).metadata
+                       if meta.num_rows == 0:
+                           # empty file, skip
+                           continue
+
+                       df_sample = pd.read_parquet(parquet_file, filters=filters, columns=load_columns)
+                       if not df_sample.empty: # In case filters get rid of all rows
+                           non_empty_passed_list.append(df_sample)
+                   except Exception as e:
+                       warnings.warn(f"Error when reading parquet file {parquet_file}. Error: {e}", stacklevel=1)
+                       continue
+               
+               if not non_empty_passed_list:
+                   continue
+                   
+               events = pd.concat(non_empty_passed_list)
+               
+               if events.empty:
+                   warnings.warn(f"No events for {sample}!", stacklevel=1)
+                   continue
+
+               if reorder_txbb:
+                   _reorder_txbb(events, txbb_str)
+
+               pickles = get_pickles(sample_path / "pickles", year, sample)
+               if "totals" in pickles:
+                   print("Normalizing using pickles")
+                   totals = pickles["totals"]
+                   _normalize_weights(
+                       events,
+                       year,
+                       totals,
+                       sample,
+                       isData=label == "data",
+                       variations=variations,
+                       weight_shifts=weight_shifts,
+                   )
+               else:
+                   if label == "data":
+                       events["finalWeight"] = events["weight"]
+                   else:
+                       n_events = get_nevents(sample_path / "pickles", year, sample)
+                       events["weight_nonorm"] = events["weight"]
+                       events["finalWeight"] = events["weight"] / n_events
+
+               events_dict[label].append(events)
+
+           except Exception as e:
+               warnings.warn("Made it to the exception block!")
+               warnings.warn(f"Error loading {sample}: {str(e)}", stacklevel=1)
+               continue
+
+       if label in events_dict and events_dict[label]:
+           events_dict[label] = pd.concat(events_dict[label])
+       else:
+           events_dict.pop(label, None)
+
+   return events_dict
 
 def add_to_cutflow(
     events_dict: dict[str, pd.DataFrame],
