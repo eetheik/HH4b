@@ -58,6 +58,15 @@ colours = {
     "dutchwhite": "#F5E5B8",
 }
 
+cms_colors = {
+    "blue": "#5790fc",	
+    "orange": "#f89c20",		
+    "red": "#e42536",		
+    "purple": "#964a8b",	
+    "grey": "#9c9ca1",		
+    "purple-blue": "#7a21dd"
+}
+
 ps = {
     "hatch": "xxx",
     "facecolor": "none",
@@ -90,9 +99,11 @@ color_by_sample = {
     "vbfhh4b-k2v0": "purple",
     "vbfhh4b-k2v2": "thistle",
     "vbfhh4b-kl2": "deeppink",
-    "ttbar": colours["darkblue"],
+    # "ttbar": colours["darkblue"],
+    "ttbar": "deeppink", #cms_colors["purple-blue"],
     "ttlep": "cadetblue",
-    "qcd": colours["canary"],
+    # "qcd": colours["canary"],
+    "qcd": cms_colors["blue"],
     "qcd-ht": colours["canary"],
     "qcdb-ht": colours["canary"],
     "zz": "orchid",
@@ -105,11 +116,16 @@ color_by_sample = {
     "W_matched": "royalblue",
     "unmatched": "lightsteelblue",
     "singletop": "cadetblue",
-    "Zto2Q_BB": colours["darkpurple"],
-    "Zto2Q_CC": "red",
+    "Zto2Q_BB": cms_colors["orange"],
+    "Zto2Q_CC": cms_colors["purple-blue"],
     "Zto2Q_QQ": "beige",
     "Zto2Q_unmatched": "darkblue",
-    "Wto2Q": "brown",
+    "Wto2Q": cms_colors["red"],
+    # "Zto2Q_BB": colours["darkpurple"],
+    # "Zto2Q_CC": "red",
+    # "Zto2Q_QQ": "beige",
+    # "Zto2Q_unmatched": "darkblue",
+    # "Wto2Q": "brown",
     "hbb": "darkgreen",
 }
 

@@ -33,16 +33,17 @@ bfit=0
 limits=0
 significance=0
 dfit=0
-gofdata=0
+gofdata=1
 goftoys=0
 impacts=0
+dNLL_scan=1
 seed=42
 numtoys=100
 bias=-1
 passbin=0
 cards_dir=0
 
-options=$(getopt -o "wblsdgti" --long "workspace,bfit,limits,significance,dfit,gofdata,goftoys,impacts:,bias:,seed:,numtoys:,passbin:,cards_dir:" -- "$@")
+options=$(getopt -o "wblsdgti" --long "workspace,bfit,limits,significance,dfit,gofdata,goftoys,impacts:,dNLL_scan,bias:,seed:,numtoys:,passbin:,failbin:,cards_dir:" -- "$@")
 eval set -- "$options"
 
 while true; do
@@ -72,6 +73,9 @@ while true; do
             shift
             impacts=$1
             ;;
+        --dNLL_scan)
+            dNLL_scan=1
+            ;;
         --seed)
             shift
             seed=$1
@@ -87,6 +91,10 @@ while true; do
         --passbin)
             shift
             passbin=$1
+            ;;
+        --failbin)
+            shift
+            failbin=$1
             ;;
         --cards_dir)
             shift
@@ -109,7 +117,7 @@ done
 
 echo "Arguments: workspace=$workspace bfit=$bfit limits=$limits \
 significance=$significance dfit=$dfit gofdata=$gofdata goftoys=$goftoys \
-seed=$seed numtoys=$numtoys passbin=$passbin cards_dir=$cards_dir"
+seed=$seed numtoys=$numtoys passbin=$passbin failbin=$failbin cards_dir=$cards_dir"
 
 
 ####################################################################################################
@@ -128,11 +136,12 @@ outsdir=${cards_dir}/outs
 mkdir -p $outsdir
 
 # args
-ccargs="fail=${cards_dir}/fail.txt passbin${passbin}=${cards_dir}/pass${passbin}.txt"
-rmin="-10"
+ccargs="fail=${cards_dir}/${failbin}.txt passbin${passbin}=${cards_dir}/pass${passbin}.txt"
+# rmin="-10"
+rmin="0"
 rmax="10"
 
-mintol=0.1  # --cminDefaultMinimizerTolerance
+mintol=0.05 # 0.1  # --cminDefaultMinimizerTolerance
 
 # floating parameters using var{} floats a bunch of parameters which shouldn't be floated,
 # so countering this inside --freezeParameters which takes priority.
@@ -140,7 +149,7 @@ mintol=0.1  # --cminDefaultMinimizerTolerance
 # so this is just to be extra safe.
 unblindedparams="--freezeParameters var{.*_In},var{.*__norm},var{n_exp_.*}"
 
-excludeimpactparams='rgx{.*tf_dataResidual_Bin.*},rgx{.*_mcstat_.*}'
+excludeimpactparams='rgx{.*tf_dataResidual.*},rgx{.*_mcstat_.*}'
 
 echo "cc args:"
 echo "$ccargs"
@@ -175,9 +184,9 @@ fi
 
 if [ $bfit = 1 ]; then
     echo "Multidim fit"
-    combine -D $dataset -M MultiDimFit --saveWorkspace -m 125 -d ${wsm}.root -v 9 --rMin $rmin --rMax $rmax \
+    combine -D $dataset -M MultiDimFit --saveWorkspace --algo singles -m 125 -d ${wsm}.root -v 9 --rMin $rmin --rMax $rmax \
     --cminDefaultMinimizerStrategy 1 --cminDefaultMinimizerTolerance "$mintol" --X-rtd MINIMIZER_MaxCalls=400000 \
-    -n Snapshot 2>&1 --algo singles | tee $outsdir/MultiDimFit.txt
+    -n Snapshot 2>&1 | tee $outsdir/MultiDimFit.txt
 fi
 
 if [ $limits = 1 ]; then
@@ -228,8 +237,6 @@ if [ "$goftoys" = 1 ]; then
     -n Toys -v 9 -s "$seed" -t "$numtoys" --saveToys --toysFrequentist 2>&1 | tee $outsdir/GoF_toys.txt
 fi
 
-
-
 if [ "$impacts" != 0 ]; then
     echo "Submitting jobs for impact scans"
     # # Impacts module cannot access parameters which were frozen in MultiDimFit, so running impacts
@@ -240,18 +247,36 @@ if [ "$impacts" != 0 ]; then
     # --robustFit 1 ${unblindedparams} \
     # --setParameterRanges r=-0.5,20 --cminDefaultMinimizerStrategy=1 -v 1 -m 125 | tee $outsdir/Impacts_"$impacts".txt
 
-    # Initial fit
-    combineTool.py -M Impacts --snapshotName MultiDimFit -m 125 -n "impacts" \
-    -d ${wsm_snapshot}.root --doInitialFit --robustFit 1 ${unblindedparams} \
-     --cminDefaultMinimizerStrategy=1 -v 1 2>&1 | tee $outsdir/Impacts_init.txt
+    # # Initial fit
+    # combineTool.py -M Impacts --doInitialFit --snapshotName MultiDimFit -m 125 -n "impacts" \
+    # -d ${wsm_snapshot}.root --robustFit 1 ${unblindedparams} \
+    #  --cminDefaultMinimizerStrategy=1 -v 1 2>&1 | tee $outsdir/Impacts_init.txt
 
-    combineTool.py -M Impacts --snapshotName MultiDimFit \
-    -m 125 -n "impacts" -d ${wsm_snapshot}.root --doFits --robustFit 1 \
+    # # optional --dry-run --job-mode interactive
+    # combineTool.py -M Impacts --doFits --snapshotName MultiDimFit \
+    # -m 125 -n "impacts" -d ${wsm_snapshot}.root --robustFit 1 \
+    # --exclude ${excludeimpactparams} \
+    # --setParameterRanges r=-0.5,20 --cminDefaultMinimizerStrategy=1 -v 1 2>&1 | tee $outsdir/Impacts_fits.txt
+
+    impact_common_args="-M Impacts -m 125 --snapshotName MultiDimFit --cminDefaultMinimizerStrategy=1 -v 1 -d ${wsm_snapshot}.root -n impacts"
+
+    # Initial fit
+    combineTool.py --doInitialFit ${impact_common_args} \
+    -d ${wsm_snapshot}.root --setParameterRanges r=0,20 --robustFit 1 ${unblindedparams} 2>&1 | tee $outsdir/Impacts_init.txt # added --setParameterRanges r=0,20 ; is it allowed?
+
+    combineTool.py --doFits ${impact_common_args} \
     --exclude ${excludeimpactparams} \
-    --job-mode interactive --dry-run \
-    --setParameterRanges r=-0.5,20 --cminDefaultMinimizerStrategy=1 -v 9 2>&1 | tee $outsdir/Impacts_fits.txt
+    --setParameterRanges r=0,20 2>&1 | tee $outsdir/Impacts_fits.txt # Changed range so that things don't go negative, that's def wrong!
+
+    # crab output and make plots
+    combineTool.py ${impact_common_args} --exclude ${excludeimpactparams} -o impacts.json
+    plotImpacts.py -i impacts.json -o impacts
 fi
 
+if [ "$dNLL_scan" != 0 ]; then
+    combine -v9 -M MultiDimFit --algo grid -m 125 -n "Scan" --rMin 0 --rMax 4 "${ws}.txt" 2>&1 #| #tee "${outsdir}/dnll_scan.txt"
+    plot1DScan.py "higgsCombineScan.MultiDimFit.mH125.root" -o scan
+fi
 
 
 if [ "$bias" != -1 ]; then

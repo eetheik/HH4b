@@ -48,8 +48,24 @@ from HH4b.postprocessing.datacardHelpers import (
 #PTS = [350, 450, 550, 10000]
 # PTS = [350, 450, 500, 550, 10000]
 
-WPS = [0.975, 1.0]
-PTS = [550, 10000]
+# WPS = [0.9, 0.95, 1.0]
+# PTS = [350, 550, 10000]
+#WPS = [0.95, 0.975, 0.99, 1.0]
+#WPS = [0.94, 0.97, 0.98, 0.99, 1.0]
+#WPS = [0.94, 0.96, 0.98, 1.0]
+WPS = [0.96, 1.0]
+PTS = [
+    #300, 
+    350,
+    #600,
+    #1200 
+    450, 
+    550,
+    #10000
+    #550,
+    #1800
+    ]
+
 pt_strs = [str(pt) for pt in PTS]
 pt_bins = list(zip(pt_strs[:-1], pt_strs[1:]))
 
@@ -60,6 +76,12 @@ ALL_PASS_REGIONS = [
     f"pass_TXbb{wp_low}to{wp_high}_pT{pt_low}to{pt_high}"
     for (pt_low, pt_high), (wp_low, wp_high) in itertools.product(pt_bins, wp_bins)
 ]
+
+FAIL_REGIONS = [
+    f"fail_pT{pt_low}to{pt_high}"
+    for pt_low, pt_high in pt_bins
+]
+
 print(f"ALL_PASS_REGIONS: {ALL_PASS_REGIONS}")
 
 try:
@@ -127,7 +149,7 @@ parser.add_argument(
 )
 add_bool_arg(parser, "mcstats", "add mc stats nuisances", default=True)
 add_bool_arg(parser, "bblite", "use barlow-beeston-lite method", default=True)
-add_bool_arg(parser, "ttbar-rate-param", "Add freely floating ttbar rate param", default=False)
+add_bool_arg(parser, "ttbar-rate-param", "Add freely floating ttbar rate param", default=False) # TODO: Check
 add_bool_arg(
     parser,
     "mc-closure",
@@ -157,12 +179,12 @@ print(f"nTF orders: {args.nTF}")
 # (name in templates, name in cards)
 mc_samples = OrderedDict(
     [
-        #("ttbar", "ttbar"),
+        ("ttbar", "ttbar"),
         #("hbb", "hbb"),
         ("Wto2Q", "Wto2Q"),
         ("Zto2Q_CC", "Zto2Q_CC"),
         ("Zto2Q_QQ", "Zto2Q_QQ"),
-        ("Zto2Q_unmatched", "Zto2Q_unmatched"),
+        # ("Zto2Q_unmatched", "Zto2Q_unmatched"),
     ]
 )
 
@@ -196,25 +218,26 @@ jmsr_keys = list(dict.fromkeys(jmsr_keys))
 
 # dictionary of nuisance params -> (modifier, samples affected by it, value)
 nuisance_params = {
-    #"pdf_gg": Syst(prior="lnN", samples=["ttbar"], value=1.042), # These two shouldn't do anything right?
-    #"QCDscale_ttbar": Syst(
-    #    prior="lnN",
-    #    samples=["ttbar"],
-    #    value=1.024,
-    #    value_down=0.965,
-    #),
+    "PDF_gg": Syst(name = "ggPDF", prior="lnN", samples=["ttbar"], value=1.042), 
+    "QCD_scale_ttbar": Syst(
+        name= r"QCD_scale_ttbar",
+        prior="lnN",
+        samples=["ttbar"],
+        value=1.024,
+        value_down=0.965,
+    ),
     # weight lumi uncertainties by corresponding integrated lumi
     "lumi_2022": Syst(
-        prior="lnN", samples=all_mc, value=1 + 0.014 * LUMI["2022All"] / LUMI["2022-2023"]
+        name = "Luminosity_2022", prior="lnN", samples=all_mc, value=1 + 0.014 * LUMI["2022All"] / LUMI["2022-2023"]
     ),
     "lumi_2023": Syst(
-        prior="lnN", samples=all_mc, value=1 + 0.013 * LUMI["2023All"] / LUMI["2022-2023"]
+        name ="Luminosity_2023", prior="lnN", samples=all_mc, value=1 + 0.013 * LUMI["2023All"] / LUMI["2022-2023"]
     ),
     "lumi_2023C": Syst(
-        prior="lnN", samples=all_mc, value=1 + 0.013 * LUMI["2023"] / LUMI["2022-2023"] # I guess dividing by 2022-2023 is fair? I am not sure about these systematics
+        name = "Luminosity_2023C", prior="lnN", samples=all_mc, value=1 + 0.013 * LUMI["2023"] / LUMI["2022-2023"] # I guess dividing by 2022-2023 is fair? I am not sure about these systematics
     ),
     "lumi_2023D": Syst(
-        prior="lnN", samples=all_mc, value=1 + 0.013 * LUMI["2023BPix"] / LUMI["2022-2023"] # I guess dividing by 2022-2023 is fair? I am not sure about these systematics; should it just be 2023All in lumi denom?
+        name = "Luminosity_2023D", prior="lnN", samples=all_mc, value=1 + 0.013 * LUMI["2023BPix"] / LUMI["2022-2023"] # I guess dividing by 2022-2023 is fair? I am not sure about these systematics; should it just be 2023All in lumi denom?
     )
 
     # Naming scheme above is absolutely fucked, why is lumi_2023 for whole of 2023; we have been splitting 2023 into "2023" and "2023BPix" so far god damn
@@ -266,37 +289,45 @@ nuisance_params_dict = {
 
 # dictionary of correlated shape systematics: name in templates -> name in cards, etc.
 corr_year_shape_systs = {
-    "JES": Syst(name="CMS_scale_j", prior="shape", samples=all_mc),
-    "FSRPartonShower": Syst(name="ps_fsr", prior="shape", samples=sig_keys, samples_corr=True),
-    "ISRPartonShower": Syst(name="ps_isr", prior="shape", samples=sig_keys, samples_corr=True),
+    "JES": Syst(name="JES", prior="shape", samples=all_mc),
+    "FSRPartonShower": Syst(name="PS_FSR", prior="shape", samples=sig_keys, samples_corr=True),
+    "ISRPartonShower": Syst(name="PS_ISR", prior="shape", samples=sig_keys, samples_corr=True),
+    "GenZPt": Syst(
+        name=r"Z_recoil",
+        prior="shape",
+        samples=["Zto2Q_BB", "Zto2Q_CC", "Zto2Q_QQ"],
+        samples_corr=True
+    )
 }
 
 uncorr_year_shape_systs = {
     "pileup": Syst(
-        name="CMS_pileup",
+        name="Pileup",
         prior="shape",
         samples=all_mc,
         uncorr_years=uncorr_years,
     ),
     "JER": Syst(
-        name="CMS_res_j",
+        name="JER",
         prior="shape",
         samples=all_mc,
         convert_shape_to_lnN=True,
         uncorr_years=uncorr_years,
     ),
     "JMS": Syst(
-        name=f"{CMS_PARAMS_LABEL}_jms",
+        name=f"JMS",
         prior="shape",
-        samples=jmsr_keys,
+        samples= jmsr_keys,
+        #convert_shape_to_lnN=True,
         uncorr_years=uncorr_years,
     ),
     "JMR": Syst(
-        name=f"{CMS_PARAMS_LABEL}_jmr",
+        name=f"JMR",
         prior="shape",
         samples=jmsr_keys,
+        #convert_shape_to_lnN=True,
         uncorr_years=uncorr_years,
-    ),
+    )
 }
 
 if not args.jmsr:
@@ -345,19 +376,38 @@ def get_templates(
     years: list[str],
     scale: float | None = None,
 ):
-    """Loads templates, combines bg and sig templates if separate, sums across all years"""
-    templates_dict: dict[str, dict[str, Hist]] = {}
+    templates_dict = {}
 
     for year in years:
-        with Path(f"{templates_dir}/templates_{year}.pkl").open("rb") as f:
-            templates_dict[year] = rem_neg(pickle.load(f))
+        templates_dict[year] = {}
+
+        for pt_low, pt_high in zip(PTS[:-1], PTS[1:]):
+            fname = f"{templates_dir}/templates_{year}_pT{pt_low}to{pt_high}.pkl"
+
+            with Path(fname).open("rb") as f:
+                tmp = rem_neg(pickle.load(f))
+
+            for region, hist in tmp.items():
+
+                # rename fail and all its variations per pT bin
+                # TODO: Have correct naming from templates onwards,
+                # rather than hotfixing it here
+                if region == "fail" or region.startswith("fail_"):
+                    region = region.replace(
+                        "fail", f"fail_pT{pt_low}to{pt_high}", 1 
+                    )
+
+                if region not in templates_dict[year]:
+                    templates_dict[year][region] = hist
+                else:
+                    templates_dict[year][region] += hist
 
     if scale is not None and scale != 1:
         for year in templates_dict:
-            for key in templates_dict[year]:
-                templates_dict[year][key] = templates_dict[year][key] * scale
+            for region in templates_dict[year]:
+                templates_dict[year][region] *= scale
 
-    templates_summed: dict[str, Hist] = sum_templates(templates_dict, years)  # sum across years
+    templates_summed = sum_templates(templates_dict, years)
     return templates_dict, templates_summed
 
 
@@ -618,48 +668,79 @@ def alphabet_fit(
     fail_qcd_samples = {}
 
     blind_strs = [""]
-    for blind_str in blind_strs:
-        failChName = f"fail{blind_str}".replace("_", "")
-        logging.info(f"Setting up fail region {failChName}")
-        failCh = model[failChName]
 
-        # sideband fail
-        # was integer, and numpy complained about subtracting float from it
-        initial_qcd = failCh.getObservation().astype(float)
-        for sample in failCh:
-            # don't subtract signals (#TODO: do we want to subtract SM signal?)
-            if sample.sampletype == rl.Sample.SIGNAL:
-                continue
-            logging.debug(
-                f"subtracting {sample._name}={sample.getExpectation(nominal=True)} from qcd"
+    for (pt_low, pt_high) in pt_bins:
+        fail_region = f"fail_pT{pt_low}to{pt_high}"
+
+        for blind_str in blind_strs:
+            failChName = f"{fail_region}{blind_str}".replace("_", "")
+            failCh = model[failChName]
+
+            initial_qcd = failCh.getObservation().astype(float)
+            for sample in failCh:
+                if sample.sampletype == rl.Sample.SIGNAL:
+                    continue
+                initial_qcd -= sample.getExpectation(nominal=True)
+
+            if np.any(initial_qcd < 0):
+                raise ValueError(f"Negative QCD in {failChName}")
+
+            sigmascale = 10
+            scaled_params = (
+                initial_qcd
+                * (1 + sigmascale / np.maximum(1.0, np.sqrt(initial_qcd))) ** qcd_params
             )
-            initial_qcd -= sample.getExpectation(nominal=True)
 
-        if np.any(initial_qcd < 0.0):
-            raise ValueError("initial_qcd negative for some bins..", initial_qcd)
+            fail_qcd = rl.ParametericSample(
+                f"{failChName}_{CMS_PARAMS_LABEL}_qcd_datadriven",
+                rl.Sample.BACKGROUND,
+                m_obs,
+                scaled_params,
+            )
+            failCh.addSample(fail_qcd)
 
-        # idea here is that the error should be 1/sqrt(N), so parametrizing it as (1 + 1/sqrt(N))^qcdparams
-        # will result in qcdparams errors ~±1
-        # but because qcd is poorly modelled we're scaling sigma scale
+            fail_qcd_samples[(pt_low, pt_high, blind_str)] = fail_qcd
+        # failChName = f"fail{blind_str}".replace("_", "")
+        # logging.info(f"Setting up fail region {failChName}")
+        # failCh = model[failChName]
 
-        sigmascale = 10  # to scale the deviation from initial
-        if scale is not None:
-            sigmascale *= scale
+        # # sideband fail
+        # # was integer, and numpy complained about subtracting float from it
+        # initial_qcd = failCh.getObservation().astype(float)
+        # for sample in failCh:
+        #     # don't subtract signals (#TODO: do we want to subtract SM signal?)
+        #     if sample.sampletype == rl.Sample.SIGNAL:
+        #         continue
+        #     logging.debug(
+        #         f"subtracting {sample._name}={sample.getExpectation(nominal=True)} from qcd"
+        #     )
+        #     initial_qcd -= sample.getExpectation(nominal=True)
 
-        scaled_params = (
-            initial_qcd * (1 + sigmascale / np.maximum(1.0, np.sqrt(initial_qcd))) ** qcd_params
-        )
+        # if np.any(initial_qcd < 0.0):
+        #     raise ValueError("initial_qcd negative for some bins..", initial_qcd)
 
-        # add samples
-        fail_qcd = rl.ParametericSample(
-            f"{failChName}_{CMS_PARAMS_LABEL}_qcd_datadriven",
-            rl.Sample.BACKGROUND,
-            m_obs,
-            scaled_params,
-        )
-        failCh.addSample(fail_qcd)
+        # # idea here is that the error should be 1/sqrt(N), so parametrizing it as (1 + 1/sqrt(N))^qcdparams
+        # # will result in qcdparams errors ~±1
+        # # but because qcd is poorly modelled we're scaling sigma scale
 
-        fail_qcd_samples[blind_str] = fail_qcd
+        # sigmascale = 10  # to scale the deviation from initial
+        # if scale is not None:
+        #     sigmascale *= scale
+
+        # scaled_params = (
+        #     initial_qcd * (1 + sigmascale / np.maximum(1.0, np.sqrt(initial_qcd))) ** qcd_params
+        # )
+
+        # # add samples
+        # fail_qcd = rl.ParametericSample(
+        #     f"{failChName}_{CMS_PARAMS_LABEL}_qcd_datadriven",
+        #     rl.Sample.BACKGROUND,
+        #     m_obs,
+        #     scaled_params,
+        # )
+        # failCh.addSample(fail_qcd)
+
+        # fail_qcd_samples[blind_str] = fail_qcd
 
     ##########################
     # Now do signal regions
@@ -667,14 +748,18 @@ def alphabet_fit(
 
     for sr in signal_regions:
         # QCD overall pass / fail efficiency
+        # extract pT bin from pass region name
+        pt_low, pt_high = sr.split("_pT")[1].split("to")
+        fail_region = f"fail_pT{pt_low}to{pt_high}"
+        print("Alphabet using fail region:", fail_region)
+
         qcd_eff = (
             templates_summed[sr][data_key, :].sum().value
             - np.sum([templates_summed[sr][bg_key, :].sum().value for bg_key in bg_keys])
         ) / (
-            templates_summed["fail"][data_key, :].sum().value
-            - np.sum([templates_summed["fail"][bg_key, :].sum().value for bg_key in bg_keys])
+            templates_summed[fail_region][data_key, :].sum().value
+            - np.sum([templates_summed[fail_region][bg_key, :].sum().value for bg_key in bg_keys])
         )
-        logging.info(f"qcd eff {qcd_eff:.5f}")
 
         # transfer factor
         tf_dataResidual = rl.BasisPoly(
@@ -682,11 +767,15 @@ def alphabet_fit(
             (shape_var.orders[sr],),
             [shape_var.name],
             basis="Bernstein",
-            limits=(-20, 20),
+            limits=(-10, 10),
             square_params=True,
         )
         tf_dataResidual_params = tf_dataResidual(shape_var.scaled)
         tf_params_pass = qcd_eff * tf_dataResidual_params  # scale params initially by qcd eff
+
+        # pt_low, pt_high = sr.split("_pT")[1].split("to")
+        # pt_low, pt_high = int(pt_low), int(pt_high)
+        pt_low, pt_high = sr.split("_pT")[1].split("to")
 
         for blind_str in blind_strs:
             passChName = f"{sr}{blind_str}".replace("_", "")
@@ -696,7 +785,8 @@ def alphabet_fit(
                 f"{passChName}_{CMS_PARAMS_LABEL}_qcd_datadriven",
                 rl.Sample.BACKGROUND,
                 tf_params_pass,
-                fail_qcd_samples[blind_str],
+                # fail_qcd_samples[blind_str],
+                fail_qcd_samples[(pt_low, pt_high, blind_str)],
                 min_val=min_qcd_val,
             )
             passCh.addSample(pass_qcd)
@@ -705,8 +795,14 @@ def alphabet_fit(
 def createDatacardAlphabet(args, templates_dict, templates_summed, shape_vars):
     blind_strs = [""]
 
-    regions: list[str] = [
-        f"{pf}{blind_str}" for pf in [*signal_regions, "fail"] for blind_str in blind_strs
+    # regions: list[str] = [
+    #     f"{pf}{blind_str}" for pf in [*signal_regions, "fail"] for blind_str in blind_strs
+    # ]
+
+    regions = [
+        f"{pf}{blind_str}"
+        for pf in [*signal_regions, *FAIL_REGIONS]
+        for blind_str in blind_strs
     ]
 
     # build actual fit model now
@@ -747,7 +843,9 @@ def createDatacardAlphabet(args, templates_dict, templates_summed, shape_vars):
     out_dir = (
         Path(args.cards_dir) / args.model_name if args.model_name is not None else args.cards_dir
     )
-    model.renderCombine(out_dir)
+    model.renderCombine(out_dir) 
+
+    logging.info(f"Combine model rendered to {out_dir}")
 
     with Path(f"{out_dir}/model.pkl").open("wb") as fout:
         pickle.dump(model, fout, 2)  # use python 2 compatible protocol

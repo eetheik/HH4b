@@ -11,6 +11,8 @@ from rhalphalib import MorphHistW2
 from HH4b.hh_vars import sig_keys_ggf, sig_keys_vbf
 from HH4b.hh_vars import years as all_years
 
+import pandas as pd 
+
 #################################################
 # Common
 #################################################
@@ -96,6 +98,12 @@ def rem_neg(template_dict: dict):
 
     return template_dict
 
+# def rem_neg(templates_dict: dict[str, dict[str, pd.DataFrame]]):
+#     for group_name, templates in templates_dict.items():
+#         for template_name, df in templates.items():
+#             # Replace all negative values in the DataFrame with 0
+#             df[df < 0] = 0
+#     return templates_dict
 
 def sum_templates(template_dict: dict, years: list[str]):
     """Sum templates across years"""
@@ -108,6 +116,7 @@ def sum_templates(template_dict: dict, years: list[str]):
 
         for year in years:
             thists.append(template_dict[year][region])
+            print(template_dict[year][region])
 
         combined[region] = sum(thists)
 
