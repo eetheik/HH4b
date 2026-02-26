@@ -8,13 +8,14 @@ use_x509userproxy       = true
 x509userproxy           = $proxy
 +JobFlavour             = "tomorrow"
 
-#output                  = /dev/null
-#error                   = /dev/null
-#log                     = /dev/null
+#output                  = /eos/user/e/eheikkil/logs/${prefix}_$jobid.out
+#error                   = /eos/user/e/eheikkil/logs/${prefix}_$jobid.err
+#log                     = /eos/user/e/eheikkil/logs/${prefix}_$jobid.log
 
-output                  = $dir/logs/${prefix}_$jobid.out
-error                   = $dir/logs/${prefix}_$jobid.err
-log                     = $dir/logs/${prefix}_$jobid.log
+output = /dev/null
+error = /dev/null
+log = /dev/null
+
 
 +SingularityImage = "/cvmfs/unpacked.cern.ch/registry.hub.docker.com/coffeateam/coffea-dask:latest-py3.8"
 

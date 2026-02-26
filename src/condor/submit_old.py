@@ -9,12 +9,10 @@ from __future__ import annotations
 import argparse
 import os
 import warnings
-import gc
 from math import ceil
 from pathlib import Path
 from string import Template
 import subprocess
-import time
 
 from HH4b import run_utils
 
@@ -40,101 +38,8 @@ def write_template(templ_file: str, out_file: str, templ_args: dict):
         f.write(templ.substitute(templ_args))
 
 
-def process_subsample(args, sample, subsample, tot_files, local_dir, outdir, t2_prefixes, proxy, tag):
-    """Process a single subsample with batching and subdirectory organization"""
-    print(f"\nProcessing {subsample} with {tot_files} files")
-    
-    subsample_base_dir = local_dir / subsample
-    subsample_base_dir.mkdir(parents=True, exist_ok=True)
-    
-    sample_dir = outdir / args.year / subsample
-    njobs = ceil(tot_files / args.files_per_job)
-    
-    print(f"  Total jobs needed: {njobs} ({args.files_per_job} files per job)")
-    
-    # Organize jobs into subdirectories to avoid too many files in one directory
-    # This actually became a problem
-    jobs_per_subdir = 1000 
-    
-    nsubmit_local = 0
-    total_subdirs = ceil(njobs / jobs_per_subdir)
-    
-    for subdir_num in range(total_subdirs):
-        start_job = subdir_num * jobs_per_subdir
-        end_job = min((subdir_num + 1) * jobs_per_subdir, njobs)
-        
-        # Create subdirectory for this batch of jobs
-        subdir_name = f"{start_job:04d}-{end_job-1:04d}"
-        subsample_dir = subsample_base_dir / subdir_name
-        subsample_dir.mkdir(parents=True, exist_ok=True)
-        
-        print(f"Processing jobs {start_job} to {end_job-1} in directory {subdir_name}...")
-        
-        batch_submissions = []
-        
-        for j in range(start_job, end_job):
-            if args.test and j == 2:
-                break
-            
-            prefix = f"{args.year}_{subsample}"
-            localcondor = subsample_dir / f"{prefix}_{j}.jdl"
-            jdl_args = {"dir": subsample_dir, "prefix": prefix, "jobid": j, "proxy": proxy}
-            write_template(jdl_templ, localcondor, jdl_args)
-            
-            localsh = subsample_dir / f"{prefix}_{j}.sh"
-            sh_args = {
-                "branch": args.git_branch,
-                "gituser": args.git_user,
-                "script": args.script,
-                "year": args.year,
-                "starti": j * args.files_per_job,
-                "endi": (j + 1) * args.files_per_job,
-                "sample": sample,
-                "subsample": subsample,
-                "processor": args.processor,
-                "maxchunks": args.maxchunks,
-                "chunksize": args.chunksize,
-                "t2_prefixes": " ".join(t2_prefixes),
-                "outdir": sample_dir,
-                "jobnum": j,
-                "nano_version": args.nano_version,
-                "save_root": ("--save-root" if args.save_root else "--no-save-root"),
-                "txbb": args.txbb,
-                "save_systematics": (
-                    "--save-systematics" if args.save_systematics else "--no-save-systematics"
-                ),
-                "region": f"--region {args.region}" if "skimmer" in args.processor else "",
-                "use_scouting": (
-                    "--use-scouting" if args.use_scouting else "--no-use-scouting"
-                ),
-            }
-            write_template(sh_templ, localsh, sh_args)
-            os.system(f"chmod u+x {localsh}")
-            
-            if Path(f"{localcondor}.log").exists():
-                Path(f"{localcondor}.log").unlink()
-            
-            batch_submissions.append(str(localcondor))
-            nsubmit_local += 1
-        
-        # Submit this batch if requested
-        if args.submit and batch_submissions:
-            print(f"Submitting {len(batch_submissions)} jobs from directory {subdir_name}...")
-            
-            with ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
-                executor.map(condor_submit, batch_submissions)
-            
-            print(f"Submitted batch {subdir_num + 1}/{total_subdirs}")
-        
-        batch_submissions.clear()
-        gc.collect()
-        
-        time.sleep(0.1)
-    
-    return nsubmit_local
-
-
 def main(args):
+    # check that branch exists
     run_utils.check_branch(args.git_branch, args.git_user, args.allow_diff_local_repo)
     username = os.environ["USER"]
 
@@ -190,26 +95,80 @@ def main(args):
 
     print(f"fileset: {fileset}")
 
-    # Global template file paths
-    global jdl_templ, sh_templ
     jdl_templ = "src/condor/submit.templ.jdl"
     sh_templ = "src/condor/submit.templ.sh"
 
     # submit jobs
     nsubmit = 0
-    
+    submissions = []
+
     for sample in fileset:
         for subsample, tot_files in fileset[sample].items():
-            nsubmit += process_subsample(
-                args, sample, subsample, tot_files, local_dir, outdir, 
-                t2_prefixes, proxy, tag
-            )
-            
-            gc.collect() # Saw some hickups so trying this
-            
-            time.sleep(0.5)
-    
-    print(f"\nTotal {nsubmit} jobs {'submitted' if args.submit else 'prepared'}")
+            if args.submit:
+                print("Submitting " + subsample)
+
+            subsample_dir = local_dir / subsample
+            subsample_dir.mkdir(parents=True, exist_ok=True)
+
+            sample_dir = outdir / args.year / subsample
+            njobs = ceil(tot_files / args.files_per_job)
+
+            for j in range(njobs):
+                if args.test and j == 2:
+                    break
+
+                prefix = f"{args.year}_{subsample}"
+                localcondor = subsample_dir / f"{prefix}_{j}.jdl"
+                jdl_args = {"dir": subsample_dir, "prefix": prefix, "jobid": j, "proxy": proxy}
+                write_template(jdl_templ, localcondor, jdl_args)
+
+                localsh = subsample_dir / f"{prefix}_{j}.sh"
+                sh_args = {
+                    "branch": args.git_branch,
+                    "gituser": args.git_user,
+                    "script": args.script,
+                    "year": args.year,
+                    "starti": j * args.files_per_job,
+                    "endi": (j + 1) * args.files_per_job,
+                    "sample": sample,
+                    "subsample": subsample,
+                    "processor": args.processor,
+                    "maxchunks": args.maxchunks,
+                    "chunksize": args.chunksize,
+                    "t2_prefixes": " ".join(t2_prefixes),
+                    "outdir": sample_dir,
+                    "jobnum": j,
+                    "nano_version": args.nano_version,
+                    "save_root": ("--save-root" if args.save_root else "--no-save-root"),
+                    "txbb": args.txbb,
+                    "save_systematics": (
+                        "--save-systematics" if args.save_systematics else "--no-save-systematics"
+                    ),
+                    "region": f"--region {args.region}" if "skimmer" in args.processor else "",
+                    "use_scouting": (
+                        "--use-scouting" if args.use_scouting else "--no-use-scouting"
+                    ),
+                }
+                write_template(sh_templ, localsh, sh_args)
+                os.system(f"chmod u+x {localsh}")
+
+                if Path(f"{localcondor}.log").exists():
+                    Path(f"{localcondor}.log").unlink()
+
+                if args.submit:
+                    submissions.append(str(localcondor))
+                    # os.system(f"condor_submit {localcondor}")
+                else:
+                    print("To submit ", localcondor)
+                nsubmit = nsubmit + 1
+
+    if args.submit and submissions:
+        print(f"Submitting {len(submissions)} jobs in parallel...")
+
+        with ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
+            executor.map(condor_submit, submissions)
+
+    print(f"Total {nsubmit} jobs")
 
 
 def parse_args(parser):

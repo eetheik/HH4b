@@ -4,12 +4,13 @@ cloudpickle>=3.0.0
 coffea==0.7.21
 colorama==0.4.6
 correctionlib==2.2.2
+dask
 hist==2.7.1
 lz4
 mplhep==0.3.46
 numpy==1.23.5
 pandas==2.0.3
-pyarrow==12.0.1
+pyarrow==11.0.0
 PyYAML==6.0.1
 scikit-learn<=1.5.0
 setuptools<71

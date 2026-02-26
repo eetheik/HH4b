@@ -21,8 +21,8 @@
                 "Wto2Q-2Jets_PTQQ-600_1J",
                 "Wto2Q-2Jets_PTQQ-600_2J", 
             ],
-            "files_per_job": 10,
-            "chunksize": 8000 
+            "files_per_job": 20,
+            "chunksize": 100000 
         },
         "QCD": {
             "subsamples": [
@@ -38,13 +38,13 @@
                 "QCD_PT-3200",
             ],
             "files_per_job": 20,
-            "chunksize": 8000
+            "chunksize": 100000
         },
         "Data": {
             "subsamples": ["Run2023D"
             ],
             "files_per_job": 1,
-            "chunksize": 1000000
+            "chunksize": 300000
         }
     },
     "2023": {
@@ -69,8 +69,8 @@
                 "Wto2Q-2Jets_PTQQ-600_1J",
                 "Wto2Q-2Jets_PTQQ-600_2J",
             ],
-            "files_per_job": 10,
-            "chunksize": 8000 
+            "files_per_job": 20,
+            "chunksize": 100000 
         },
         "QCD": {
             "subsamples": [
@@ -86,13 +86,13 @@
                 "QCD_PT-3200",
             ],
             "files_per_job": 20,
-            "chunksize": 8000
+            "chunksize": 100000
         },
         "Data": {
             "subsamples": ["Run2023C"
             ],
             "files_per_job": 1,
-            "chunksize": 1000000
+            "chunksize": 300000
         }
     }
 }

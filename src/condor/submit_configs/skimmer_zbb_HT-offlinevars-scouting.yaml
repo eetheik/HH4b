@@ -33,9 +33,7 @@
             "chunksize": 8000
         },
         "JetMET": {
-            "subsamples": ["Run2023D-22Sep2023_v1-v1_DAZSLE_PFNano"
-            ],
-            "files_per_job": 1
+            "files_per_job": 10
         }
     },
     "2023": {
@@ -72,8 +70,6 @@
             "chunksize": 8000
         },
         "JetMET": {
-            "subsamples": ["Run2023C-22Sep2023_v1-v1_DAZSLE_PFNano"
-            ],
             "files_per_job": 1
         }
     }
